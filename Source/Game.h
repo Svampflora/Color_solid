@@ -7,7 +7,7 @@
 
 class Game
 {
-	Window window{ "Oviraptor", SCREEN_WIDTH, SCREEN_HEIGHT };
+	Window window{ "Color Solid", SCREEN_WIDTH, SCREEN_HEIGHT };
 	std::unique_ptr<State> current_state = std::make_unique<Start_screen>();
 	Score_data scoreData{};
 

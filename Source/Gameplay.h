@@ -1,15 +1,14 @@
 #pragma once
 
-#include <ranges>
-
-
+//#include <ranges>
 #include "State.h"
-#include "Player.h"
+#include "ColorUtils.h"
+
 
 class Play_screen : public State
 {
-	Player player{};
-	int score{0};
+	std::string ncsInput = { "S 1050-Y90R" };
+
 
 
 public:

@@ -59,5 +59,26 @@ Play_screen::Play_screen()
 
 void Play_screen::Render() const noexcept
 {
+	//Color targetRGB = NCS_To_RGB(ncsInput);
+	//DrawRectangle(400, 100, 100, 100, targetRGB);
+	//DrawText(ncsInput.c_str(), 400, 210, 20, WHITE);
+	NCS_Color ncs_color(ncsInput);
+	//ncs_color.draw({ 400, 100 }, { 100, 100 });
+
+	//NCSTriangle ncs_triangle(ncs_color.hueCode, 10);
+
+	//ncs_triangle.draw({ 0.1f * GetScreenWidthF(), 0.1f * GetScreenHeightF() }, { 0.8f * GetScreenWidthF(), 0.8f * GetScreenHeightF() });
+
+	ColorWheel wheel({
+	{0.0f, NCS_RED},
+	{PI / 2, NCS_BLUE},
+	{PI , NCS_GREEN},
+	{3 * PI / 2, NCS_YELLOW}
+		});
+
+
+	wheel.draw({ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f }, 250, 12);
+	//DrawCircleV({ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f }, 250, GRAY);
+
 
 }

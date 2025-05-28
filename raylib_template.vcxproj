@@ -165,21 +165,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\ColorUtils.cpp" />
     <ClCompile Include="Source\Endscreen.cpp" />
     <ClCompile Include="Source\Game.cpp" />
     <ClCompile Include="Source\Gameplay.cpp" />
     <ClCompile Include="Source\main.cpp" />
-    <ClCompile Include="Source\Player.cpp" />
     <ClCompile Include="Source\Startscreen.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\ColorUtils.h" />
     <ClInclude Include="Source\Settings.h" />
     <ClInclude Include="Source\Endscreen.h" />
     <ClInclude Include="Source\Game.h" />
     <ClInclude Include="Source\Gameplay.h" />
     <ClInclude Include="Source\Startscreen.h" />
     <ClInclude Include="Source\State.h" />
-    <ClInclude Include="Source\Player.h" />
     <ClInclude Include="Source\Utilities.h" />
     <ClInclude Include="Source\Window.h" />
   </ItemGroup>

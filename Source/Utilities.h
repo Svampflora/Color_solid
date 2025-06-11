@@ -37,3 +37,7 @@ typedef struct Vector2i {
 	int y;                
 } Vector2i;
 
+static inline Vector2 GetScreenCenter() noexcept
+{
+	return {GetScreenWidthF(), GetScreenHeightF()};
+}

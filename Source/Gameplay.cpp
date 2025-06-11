@@ -44,20 +44,43 @@ std::unique_ptr<State> Play_screen::Update()
 {
 	if (IsKeyReleased(KEY_Q))
 	{
+
+		EndMode3D();
 		return std::make_unique<End_screen>();
+
+
 	}
 
+	float scroll = GetMouseWheelMove();
+	solid.rotation.y += scroll * 5.0f; // Skala känsligheten
 
 	return nullptr;
 }
 
 [[gsl::suppress(f.6)]]
-Play_screen::Play_screen()
+Play_screen::Play_screen() : 
+	wheel({
+	{0.0f, NCS_RED},
+	{PI / 2, NCS_BLUE},
+	{PI , NCS_GREEN},
+	{3 * PI / 2, NCS_YELLOW}
+		}),
+	solid({ 1.0f, 0.0f, -4.0f }, 2.0f, 3.0f, 8, wheel)
+
 {
+	Camera camera = { 0 };
+	//camera.position = Vector3{ 0.0f, 10.0f, 10.0f };
+	camera.position = { 0.0f, 2.0f, 6.0f };
+
+	camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
+	camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
+	camera.fovy = 45.0f;
+	camera.projection = CAMERA_PERSPECTIVE;
+	BeginMode3D(camera);
 
 }
 
-void Play_screen::Render() const noexcept
+void Play_screen::Render()  const noexcept
 {
 	//Color targetRGB = NCS_To_RGB(ncsInput);
 	//DrawRectangle(400, 100, 100, 100, targetRGB);
@@ -69,16 +92,14 @@ void Play_screen::Render() const noexcept
 
 	//ncs_triangle.draw({ 0.1f * GetScreenWidthF(), 0.1f * GetScreenHeightF() }, { 0.8f * GetScreenWidthF(), 0.8f * GetScreenHeightF() });
 
-	ColorWheel wheel({
-	{0.0f, NCS_RED},
-	{PI / 2, NCS_BLUE},
-	{PI , NCS_GREEN},
-	{3 * PI / 2, NCS_YELLOW}
-		});
 
 
-	wheel.draw({ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f }, 250, 12);
+
+	//wheel.draw({ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f }, 250, 12);
 	//DrawCircleV({ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f }, 250, GRAY);
 
+	//drawTriangleGradient({ GetScreenWidthF() * 0.5f, 0.0f }, { 0.0f, GetScreenHeightF() }, { GetScreenWidthF(), GetScreenHeightF() }, NCS_RED, NCS_YELLOW, 6);
+
+	solid.draw();
 
 }

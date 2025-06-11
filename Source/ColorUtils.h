@@ -11,6 +11,8 @@
 #include <string>
 #include <regex>
 
+using RGB = Color;
+
 struct Lab_Color
 {
     float L, a, b;
@@ -29,33 +31,57 @@ static inline float inv_pivot_lab(float t) noexcept {
     return (t3 > 0.008856f) ? t3 : ((t - 16.0f / 116.0f) / 7.787f);
 }
 
-Lab_Color RGB_to_Lab(Color c) noexcept;
-Color Lab_to_RGB(Lab_Color lab) noexcept;
+Lab_Color RGB_to_Lab(RGB c) noexcept;
+RGB Lab_to_RGB(Lab_Color lab) noexcept;
+Lab_Color RGB_to_OKLab(RGB c) noexcept;
+RGB OKLab_to_RGB(Lab_Color lab) noexcept;
+// uppskattning
+RGB NCS_To_RGB(const std::string& ncsCode);
 
-Color RGB_lerp(Color a, Color b, float t) noexcept;
-Color Lab_lerp(Color a, Color b, float t) noexcept;
-Color HSV_lerp(Color a, Color b, float t) noexcept;
+
+RGB RGB_lerp(RGB a, RGB b, float t) noexcept;
+RGB Lab_lerp(RGB a, RGB b, float t) noexcept;
+RGB OKlab_lerp(RGB a, RGB b, float t) noexcept;
+RGB HSV_lerp(RGB a, RGB b, float t) noexcept;
 
 
 float deltaE76(Lab_Color c1, Lab_Color c2);
 
+inline void drawTriangleGradient(Vector2 v1, Vector2 v2, Vector2 v3, Color c1, Color c2, unsigned int resolution)
+{
+    for (unsigned int i = 0; i < resolution; ++i)
+    {
+        float t0 = (float)i / resolution;
+        float t1 = (float)(i + 1) / resolution;
 
-// uppskattning
-Color NCS_To_RGB(const std::string& ncsCode);
+        Vector2 v2_outer = Vector2Lerp(v2, v1, t0);
+        Vector2 v3_outer = Vector2Lerp(v3, v1, t0);
 
-Lab_Color blendColors(const std::vector<Lab_Color>& colors, const std::vector<float>& weights);
+        Vector2 v2_inner = Vector2Lerp(v2, v1, t1);
+        Vector2 v3_inner = Vector2Lerp(v3, v1, t1);
 
-constexpr Color NCS_GREEN{ 0, 158, 107, 255 };
-constexpr Color NCS_RED {196, 3, 51, 255};
-constexpr Color NCS_YELLOW {255, 212, 0, 255};
-constexpr Color NCS_BLUE {0, 135, 189, 255};
+        Color c = OKlab_lerp(c1, c2, t0);
+
+        DrawTriangle(v2_outer, v3_outer, v2_inner, c);
+        DrawTriangle(v3_outer, v3_inner, v2_inner, c);
+    }
+}
+
+
+
+Lab_Color mix_colors(const std::vector<Lab_Color>& colors, const std::vector<float>& weights);
+
+constexpr RGB NCS_GREEN{ 0, 158, 107, 255 };
+constexpr RGB NCS_RED {196, 3, 51, 255};
+constexpr RGB NCS_YELLOW {255, 212, 0, 255};
+constexpr RGB NCS_BLUE {0, 135, 189, 255};
 
 struct NCS_Color 
 {
-    int blackness;          // Svarthetsvärde, 0–100
-    int chromaticness;      // Kulörthet, 0–100
-    std::string hueCode;    // T.ex. "Y20R"
-    Color rgb = WHITE;
+    int blackness;         
+    int chromaticness;     
+    std::string hueCode;   
+    RGB rgb = WHITE;
 
     NCS_Color() = default;
 
@@ -114,11 +140,11 @@ private:
 
 class NCSTriangle
 {
-public:
-    std::string hueCode;              // T.ex. "Y20R"
-    unsigned int resolution = 10;     // Hur många steg (per axel)
-    std::vector<NCS_Color> NCScolors;  // Förberedda färger
+    std::string hueCode;             
+    unsigned int resolution = 10;    
+    std::vector<NCS_Color> NCScolors;
 
+public:
     NCSTriangle(std::string _hueCode, unsigned int _resolution)
         : hueCode(_hueCode), resolution(_resolution)
     {
@@ -170,10 +196,14 @@ class ColorWheel
 public:
     struct Node
     {
-        float angle; // I radianer, t.ex. 0 till 2*PI
-        Color color;
+        float angle;
+        RGB color;
     };
 
+private:
+    std::vector<Node> wheel;
+
+public:
     ColorWheel(const std::vector<Node>& nodes)
     {
         wheel = nodes;
@@ -190,32 +220,12 @@ public:
         }
     }
 
-    Color get_color(float radians) const noexcept
-    {
-        radians = fmod(radians, 2 * PI);
-        if (radians < 0) radians += 2 * PI;
-
-        for (size_t i = 0; i < wheel.size() - 1; ++i)
-        {
-            const Node& a = wheel[i];
-            const Node& b = wheel[i + 1];
-
-            if (radians >= a.angle && radians <= b.angle)
-            {
-                const float t = (radians - a.angle) / (b.angle - a.angle);
-                return Lab_lerp(a.color, b.color, t);
-            }
-        }
-
-        return BLACK; // Fallback
-    }
-
     void draw(Vector2 position, float radius, unsigned int resolution) const 
     {
         for (unsigned int i = 0; i < resolution; ++i)
         {
             const float angle = (2 * PI * i) / resolution;
-            const Color color = get_color(angle);
+            const RGB color = get_color(angle);
             const Vector2 dir = { cosf(angle), sinf(angle) };
 
             const float theta = 2 * PI / resolution;
@@ -242,14 +252,137 @@ public:
         }
     }
 
+    RGB get_color(float radians) const noexcept
+    {
+        radians = fmod(radians, 2 * PI);
+        if (radians < 0) radians += 2 * PI;
+
+        for (size_t i = 0; i < wheel.size() - 1; ++i)
+        {
+            const Node& a = wheel[i];
+            const Node& b = wheel[i + 1];
+
+            if (radians >= a.angle && radians <= b.angle)
+            {
+                const float t = (radians - a.angle) / (b.angle - a.angle);
+                return OKlab_lerp(a.color, b.color, t);
+            }
+        }
+
+        return BLACK;
+    }
 private:
-    std::vector<Node> wheel;
-
-
-
-
 };
 
+class ColorBicone3D
+{
+public:
+    Vector3 position;
+    Vector3 rotation; // yaw, pitch, roll i grader
+    float radius;
+    float height;
+    unsigned int resolution;
+    const ColorWheel& wheel;
+
+    Model model;   // Raylib model
+    bool initialized = false;
+
+    ColorBicone3D(Vector3 _position, float _radius, float _height, unsigned int _resolution, const ColorWheel& _wheel)
+        : position(_position), radius(_radius), height(_height), resolution(_resolution), wheel(_wheel)
+    {
+        buildModel(); // Bygg en gång
+    }
+
+    ~ColorBicone3D()
+    {
+        if (initialized) UnloadModel(model);
+    }
+
+    void draw() const
+    {
+        if (!initialized) return;
+
+        // Rotationsmatris
+        const Matrix rotationMatrix = MatrixRotateXYZ({ DEG2RAD * rotation.x, DEG2RAD * rotation.y, DEG2RAD * rotation.z });
+
+        // Modellens transform
+        DrawModelEx(model, position, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, WHITE);
+    }
+
+private:
+    void buildModel()
+    {
+        //const unsigned int vertexCount = resolution * 6; // 2 trianglar per sektor (top/bottom)
+        std::vector<Vector3> vertices;
+        std::vector<Color> colors;
+        std::vector<unsigned short> indices;
+
+        const float halfHeight = height / 2.0f;
+        const Vector3 top = { 0, halfHeight, 0 };
+        const Vector3 bottom = { 0, -halfHeight, 0 };
+
+        for (unsigned int i = 0; i < resolution; ++i)
+        {
+            const float angle0 = (2.0f * PI * i) / resolution;
+            const float angle1 = (2.0f * PI * (i + 1)) / resolution;
+             
+            const Vector3 p0 = { cosf(angle0) * radius, 0, sinf(angle0) * radius };
+            const Vector3 p1 = { cosf(angle1) * radius, 0, sinf(angle1) * radius };
+             
+            const Color c0 = wheel.get_color(angle0);
+            const Color c1 = wheel.get_color(angle1);
+            const Color mid = OKlab_lerp(c0, c1, 0.5f);
+
+            // Övre kon
+            vertices.push_back(top);
+            colors.push_back(WHITE);
+            vertices.push_back(p0);
+            colors.push_back(mid);
+            vertices.push_back(p1);
+            colors.push_back(mid);
+
+            // Undre kon
+            vertices.push_back(bottom);
+            colors.push_back(BLACK);
+            vertices.push_back(p1);
+            colors.push_back(mid);
+            vertices.push_back(p0);
+            colors.push_back(mid);
+
+            unsigned short base = narrow_cast<unsigned short>(i * 6);
+            for (unsigned short j = 0; j < 6; ++j) indices.push_back(base + j);
+        }
+
+        Mesh mesh = { 0 };
+        mesh.vertexCount = (int)vertices.size();
+        mesh.triangleCount = (int)indices.size() / 3;
+
+        mesh.vertices = (float*)MemAlloc(static_cast<int>(vertices.size()) * 3 * sizeof(float));
+        mesh.colors = (unsigned char*)MemAlloc(static_cast<int>(colors.size()) * 4 * sizeof(unsigned char));
+        mesh.indices = (unsigned short*)MemAlloc(static_cast<int>(indices.size()) * sizeof(unsigned short));
+
+        for (size_t i = 0; i < vertices.size(); ++i)
+        {
+            mesh.vertices[i * 3 + 0] = vertices[i].x;
+            mesh.vertices[i * 3 + 1] = vertices[i].y;
+            mesh.vertices[i * 3 + 2] = vertices[i].z;
+
+            mesh.colors[i * 4 + 0] = colors[i].r;
+            mesh.colors[i * 4 + 1] = colors[i].g;
+            mesh.colors[i * 4 + 2] = colors[i].b;
+            mesh.colors[i * 4 + 3] = colors[i].a;
+        }
+
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            mesh.indices[i] = indices[i];
+        }
+
+        UploadMesh(&mesh, false);
+        model = LoadModelFromMesh(mesh);
+        initialized = true;
+    }
+};
 
 
 

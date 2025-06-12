@@ -26,8 +26,8 @@ static inline float pivot_lab(float t) noexcept {
     return (t > 0.008856f) ? powf(t, 1.0f / 3.0f) : (7.787f * t + 16.0f / 116.0f);
 }
 
-static inline float inv_pivot_lab(float t) noexcept {
-    float t3 = t * t * t;
+static inline constexpr float inv_pivot_lab(float t) noexcept {
+    const float t3 = t * t * t;
     return (t3 > 0.008856f) ? t3 : ((t - 16.0f / 116.0f) / 7.787f);
 }
 
@@ -51,16 +51,16 @@ inline void drawTriangleGradient(Vector2 v1, Vector2 v2, Vector2 v3, Color c1, C
 {
     for (unsigned int i = 0; i < resolution; ++i)
     {
-        float t0 = (float)i / resolution;
-        float t1 = (float)(i + 1) / resolution;
-
-        Vector2 v2_outer = Vector2Lerp(v2, v1, t0);
-        Vector2 v3_outer = Vector2Lerp(v3, v1, t0);
-
-        Vector2 v2_inner = Vector2Lerp(v2, v1, t1);
-        Vector2 v3_inner = Vector2Lerp(v3, v1, t1);
-
-        Color c = OKlab_lerp(c1, c2, t0);
+        const float t0 = static_cast<float>(i) / resolution;
+        const float t1 = static_cast<float>(i + 1) / resolution;
+         
+        const Vector2 v2_outer = Vector2Lerp(v2, v1, t0);
+        const Vector2 v3_outer = Vector2Lerp(v3, v1, t0);
+         
+        const Vector2 v2_inner = Vector2Lerp(v2, v1, t1);
+        const Vector2 v3_inner = Vector2Lerp(v3, v1, t1);
+         
+        const Color c = OKlab_lerp(c1, c2, t0);
 
         DrawTriangle(v2_outer, v3_outer, v2_inner, c);
         DrawTriangle(v3_outer, v3_inner, v2_inner, c);
@@ -278,19 +278,20 @@ class ColorBicone3D
 {
 public:
     Vector3 position;
-    Vector3 rotation; // yaw, pitch, roll i grader
+    Vector3 rotation;
     float radius;
     float height;
-    unsigned int resolution;
-    const ColorWheel& wheel;
+    unsigned int hue_resolution;
+    unsigned int tint_resolution;
+    const ColorWheel wheel;
 
-    Model model;   // Raylib model
+    Model model;
     bool initialized = false;
 
-    ColorBicone3D(Vector3 _position, float _radius, float _height, unsigned int _resolution, const ColorWheel& _wheel)
-        : position(_position), radius(_radius), height(_height), resolution(_resolution), wheel(_wheel)
+    ColorBicone3D(Vector3 _position, float _radius, float _height, unsigned int _hue_resolution, unsigned int _tint_resolution, const ColorWheel& _wheel)
+        : position(_position), radius(_radius), height(_height), hue_resolution(_hue_resolution), tint_resolution(_tint_resolution), wheel(_wheel)
     {
-        buildModel(); // Bygg en gång
+        buildModel();
     }
 
     ~ColorBicone3D()
@@ -302,66 +303,111 @@ public:
     {
         if (!initialized) return;
 
-        // Rotationsmatris
         const Matrix rotationMatrix = MatrixRotateXYZ({ DEG2RAD * rotation.x, DEG2RAD * rotation.y, DEG2RAD * rotation.z });
 
         // Modellens transform
         DrawModelEx(model, position, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, WHITE);
+        //DrawModelWiresEx(model, position, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, BLACK);
     }
 
 private:
+
     void buildModel()
     {
-        //const unsigned int vertexCount = resolution * 6; // 2 trianglar per sektor (top/bottom)
+
         std::vector<Vector3> vertices;
         std::vector<Color> colors;
-        std::vector<unsigned short> indices;
 
-        const float halfHeight = height / 2.0f;
-        const Vector3 top = { 0, halfHeight, 0 };
-        const Vector3 bottom = { 0, -halfHeight, 0 };
+        const int segments = hue_resolution;
+        const float angleStep = 2 * PI / segments;
 
-        for (unsigned int i = 0; i < resolution; ++i)
+        const float halfHeight = height * 0.5f;
+
+        // ÖVRE HALVA: från vit → kulör (färghjul)
+        for (int i = 0; i < segments; ++i)
         {
-            const float angle0 = (2.0f * PI * i) / resolution;
-            const float angle1 = (2.0f * PI * (i + 1)) / resolution;
-             
-            const Vector3 p0 = { cosf(angle0) * radius, 0, sinf(angle0) * radius };
-            const Vector3 p1 = { cosf(angle1) * radius, 0, sinf(angle1) * radius };
-             
-            const Color c0 = wheel.get_color(angle0);
-            const Color c1 = wheel.get_color(angle1);
-            const Color mid = OKlab_lerp(c0, c1, 0.5f);
+            float angle0 = i * angleStep;
+            float angle1 = (i + 1) * angleStep;
 
-            // Övre kon
-            vertices.push_back(top);
-            colors.push_back(WHITE);
-            vertices.push_back(p0);
-            colors.push_back(mid);
-            vertices.push_back(p1);
-            colors.push_back(mid);
+            Color color0 = wheel.get_color(angle0);
 
-            // Undre kon
-            vertices.push_back(bottom);
-            colors.push_back(BLACK);
-            vertices.push_back(p1);
-            colors.push_back(mid);
-            vertices.push_back(p0);
-            colors.push_back(mid);
+            for (unsigned int r = 0; r < tint_resolution; ++r)
+            {
+                float t0 = (float)r / tint_resolution;
+                float t1 = (float)(r + 1) / tint_resolution;
 
-            unsigned short base = narrow_cast<unsigned short>(i * 6);
-            for (unsigned short j = 0; j < 6; ++j) indices.push_back(base + j);
+                // Vertikala nivåer
+                float y0 = Lerp(0.0f, halfHeight, t0);
+                float y1 = Lerp(0.0f, halfHeight, t1);
+
+                // Radier minskar mot toppen
+                float radius0 = radius * (1.0f - t0);
+                float radius1 = radius * (1.0f - t1);
+
+                Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
+                Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
+                Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
+                Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
+
+                Color c = OKlab_lerp( color0, WHITE, t0);
+
+                // Två trianglar per rektangel-segment
+                vertices.push_back(v0); colors.push_back(c);
+                vertices.push_back(v2); colors.push_back(c);
+                vertices.push_back(v3); colors.push_back(c);
+
+                vertices.push_back(v0); colors.push_back(c);
+                vertices.push_back(v3); colors.push_back(c);
+                vertices.push_back(v1); colors.push_back(c);
+            }
         }
 
-        Mesh mesh = { 0 };
-        mesh.vertexCount = (int)vertices.size();
-        mesh.triangleCount = (int)indices.size() / 3;
 
-        mesh.vertices = (float*)MemAlloc(static_cast<int>(vertices.size()) * 3 * sizeof(float));
-        mesh.colors = (unsigned char*)MemAlloc(static_cast<int>(colors.size()) * 4 * sizeof(unsigned char));
-        mesh.indices = (unsigned short*)MemAlloc(static_cast<int>(indices.size()) * sizeof(unsigned short));
+        // UNDRE HALVA: från kulör (färghjul) → svart
+        for (int i = 0; i < segments; ++i)
+        {
+            float angle0 = i * angleStep;
+            float angle1 = (i + 1) * angleStep;
 
-        for (size_t i = 0; i < vertices.size(); ++i)
+            Color color0 = wheel.get_color(angle0);
+
+            for (unsigned int r = 0; r < tint_resolution; ++r)
+            {
+                float t0 = (float)r / tint_resolution;
+                float t1 = (float)(r + 1) / tint_resolution;
+
+                float y0 = Lerp(0.0f, -halfHeight, t0);
+                float y1 = Lerp(0.0f, -halfHeight, t1);
+
+                float radius0 = radius * (1.0f - t0);
+                float radius1 = radius * (1.0f - t1);
+
+                Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
+                Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
+                Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
+                Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
+
+                Color c = OKlab_lerp(color0, BLACK, t1);
+
+                vertices.push_back(v0); colors.push_back(c);
+                vertices.push_back(v3); colors.push_back(c);
+                vertices.push_back(v2); colors.push_back(c);
+
+                vertices.push_back(v0); colors.push_back(c);
+                vertices.push_back(v1); colors.push_back(c);
+                vertices.push_back(v3); colors.push_back(c);
+            }
+        }
+
+        // Skapa modell
+        Mesh mesh = {};
+        mesh.triangleCount = static_cast<int>(vertices.size() / 3);
+        mesh.vertexCount = static_cast<int>(vertices.size());
+
+        mesh.vertices = (float*)MemAlloc(sizeof(float) * 3 * mesh.vertexCount);
+        mesh.colors = (unsigned char*)MemAlloc(sizeof(unsigned char) * 4 * mesh.vertexCount);
+
+        for (int i = 0; i < mesh.vertexCount; ++i)
         {
             mesh.vertices[i * 3 + 0] = vertices[i].x;
             mesh.vertices[i * 3 + 1] = vertices[i].y;
@@ -371,11 +417,6 @@ private:
             mesh.colors[i * 4 + 1] = colors[i].g;
             mesh.colors[i * 4 + 2] = colors[i].b;
             mesh.colors[i * 4 + 3] = colors[i].a;
-        }
-
-        for (size_t i = 0; i < indices.size(); ++i)
-        {
-            mesh.indices[i] = indices[i];
         }
 
         UploadMesh(&mesh, false);

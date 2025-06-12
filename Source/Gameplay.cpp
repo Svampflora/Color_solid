@@ -44,14 +44,11 @@ std::unique_ptr<State> Play_screen::Update()
 {
 	if (IsKeyReleased(KEY_Q))
 	{
-
 		EndMode3D();
 		return std::make_unique<End_screen>();
-
-
 	}
 
-	float scroll = GetMouseWheelMove();
+	const float scroll = GetMouseWheelMove();
 	solid.rotation.y += scroll * 5.0f; // Skala känsligheten
 
 	return nullptr;
@@ -65,7 +62,7 @@ Play_screen::Play_screen() :
 	{PI , NCS_GREEN},
 	{3 * PI / 2, NCS_YELLOW}
 		}),
-	solid({ 1.0f, 0.0f, -4.0f }, 2.0f, 3.0f, 8, wheel)
+	solid({ 0.0f, 0.0f, -4.0f }, 2.0f, 3.0f, 48, 12, wheel)
 
 {
 	Camera camera = { 0 };

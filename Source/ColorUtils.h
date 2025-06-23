@@ -10,12 +10,25 @@
 #include <vector>
 #include <string>
 #include <regex>
+#include <map>
 
 using RGB = Color;
 
 struct Lab_Color
 {
     float L, a, b;
+};
+
+struct NCSPlusColor
+{
+    float blackness;       // 0.0 (ingen svärta) → 1.0 (helt svart)
+    float chromaticness;   // 0.0 (ingen kulör) → 1.0 (full kulörstyrka)
+    float hue;             // 0.0 → 2π (radians) – vinkeln runt färghjul
+
+    NCSPlusColor(float b, float c, float h)
+        : blackness(std::clamp(b, 0.0f, 1.0f)),
+        chromaticness(std::clamp(c, 0.0f, 1.0f)),
+        hue(fmod(h, 2.0f * PI)) {}
 };
 
 static inline float pivot_rgb(float n) noexcept {
@@ -47,6 +60,67 @@ RGB HSV_lerp(RGB a, RGB b, float t) noexcept;
 
 float deltaE76(Lab_Color c1, Lab_Color c2);
 
+#include <numeric>
+
+class Paint_mixer
+{
+public:
+    struct Paint
+    {
+        NCSPlusColor color;
+        float opacity;
+        float amount;
+    };
+
+    Paint blend(const std::vector<Paint> paints)
+    {
+        if (paints.empty())
+            throw std::invalid_argument("för få färger att blanda angavs");
+
+        std::vector<float> blacks, chromas, amounts;
+        for (const auto& c : paints)
+        {
+            blacks.push_back(c.color.blackness);
+            chromas.push_back(c.color.chromaticness);
+            amounts.push_back(c.amount);
+        }
+
+        const float total_amount = std::accumulate(amounts.begin(), amounts.end(), 0.0f);
+
+        const float avrage_chroma = weighted_average(chromas, amounts);
+        const float avrage_black = weighted_average(blacks, amounts);
+        const float found_hue = find_hue(paints);
+
+        return Paint{ {avrage_black, avrage_chroma, found_hue}, 1, total_amount };
+    }
+
+private:
+
+    float find_hue(const std::vector<Paint>paints) const noexcept//TODO: take opacity in to account
+    {
+        float sumX = 0, sumY = 0, total = 0;
+        for (size_t i = 0; i < paints.size(); ++i)
+        {
+            sumX += cos(paints[i].color.hue) * paints[i].amount * paints[i].color.chromaticness;
+            sumY += sin(paints[i].color.hue) * paints[i].amount * paints[i].color.chromaticness;
+            total += paints[i].amount;
+        }
+        return atan2(sumY / total, sumX / total);
+    }
+
+    float weighted_average(const std::vector<float> values, const std::vector<float> weights) const noexcept
+    {
+        float sum = 0, total = 0;
+        for (size_t i = 0; i < values.size(); ++i)
+        {
+            sum += values[i] * weights[i];
+            total += weights[i];
+        }
+        return sum / total;
+    }
+
+};
+
 inline void drawTriangleGradient(Vector2 v1, Vector2 v2, Vector2 v3, Color c1, Color c2, unsigned int resolution)
 {
     for (unsigned int i = 0; i < resolution; ++i)
@@ -67,6 +141,89 @@ inline void drawTriangleGradient(Vector2 v1, Vector2 v2, Vector2 v3, Color c1, C
     }
 }
 
+
+class ColorWheel
+{
+public:
+    struct Node
+    {
+        float angle;
+        RGB color; //TODO: ändra till annan färg-typ
+    };
+
+private:
+    std::vector<Node> wheel;
+
+public:
+    ColorWheel(const std::vector<Node>& nodes)
+    {
+        wheel = nodes;
+        std::sort(wheel.begin(), wheel.end(), [](const Node& a, const Node& b) {
+            return a.angle < b.angle;
+            });
+
+        // Lägg till en kopia av första färgen på slutet (för interpolering över 2π)
+        if (!wheel.empty())
+        {
+            Node wrap = wheel.front();
+            wrap.angle += 2 * PI;
+            wheel.push_back(wrap);
+        }
+    }
+
+    void draw(Vector2 position, float radius, unsigned int resolution) const
+    {
+        for (unsigned int i = 0; i < resolution; ++i)
+        {
+            const float angle = (2 * PI * i) / resolution;
+            const RGB color = get_color(angle);
+            const Vector2 dir = { cosf(angle), sinf(angle) };
+
+            const float theta = 2 * PI / resolution;
+            const float squareSize = 2.0f * radius * sinf(theta / 2.0f);
+
+            const Vector2 center = {
+            position.x + dir.x * (radius + squareSize / 2.0f),
+            position.y + dir.y * (radius + squareSize / 2.0f)
+            };
+
+            const Rectangle rect = {
+                center.x,
+                center.y,
+                squareSize,
+                squareSize
+            };
+
+            DrawRectanglePro(
+                rect,
+                { squareSize / 2 , squareSize / 2 },
+                angle * RAD2DEG,
+                color
+            );
+        }
+    }
+
+    RGB get_color(float radians) const noexcept
+    {
+        radians = fmod(radians, 2 * PI);
+        if (radians < 0) radians += 2 * PI;
+
+        for (size_t i = 0; i < wheel.size() - 1; ++i)
+        {
+            const Node& a = wheel[i];
+            const Node& b = wheel[i + 1];
+
+            if (radians >= a.angle && radians <= b.angle)
+            {
+                const float t = (radians - a.angle) / (b.angle - a.angle);
+                return OKlab_lerp(a.color, b.color, t);
+            }
+        }
+
+        return BLACK;
+    }
+private:
+};
 
 
 Lab_Color mix_colors(const std::vector<Lab_Color>& colors, const std::vector<float>& weights);
@@ -98,6 +255,12 @@ struct NCS_Color
         rgb = NCS_To_RGB(to_string());
     }
 
+    NCSPlusColor to_NCSPlus() const
+    {
+        
+        return {blackness * 0.1f, chromaticness * 0.1f, hueCode_to_radians(hueCode)};
+    }
+
     std::string to_string() const 
     {
 
@@ -115,7 +278,7 @@ struct NCS_Color
 
 private:
 
-    void parse_from_string(const std::string& ncsStr)
+    void parse_from_string(const std::string& ncsStr) 
     {
         std::regex re("S\\s?(\\d{2})(\\d{2})-([A-Z0-9]+)");
         std::smatch match;
@@ -136,7 +299,58 @@ private:
             throw std::invalid_argument("Ogiltig NCS-kod: " + ncsStr);
         }
     }
+
+    float hueCode_to_radians(const std::string& hueCode) const 
+    {
+        if (hueCode == "N") return 0.0f;
+
+        std::map<std::string, float> hueAngles = hue_Angles();
+        std::regex re(R"(([A-Z]+)(\d{2})([A-Z]+))");
+        std::smatch match;
+
+        if (std::regex_match(hueCode, match, re)) {
+            std::string base1 = match[1];
+            int percent = std::stoi(match[2]);
+            std::string base2 = match[3];
+
+            float angle1 = hueAngles.at(base1);
+            float angle2 = hueAngles.at(base2);
+
+            float t = percent / 100.0f;
+
+            // Interpolera vinklar cirkulärt
+            float delta = angle2 - angle1;
+            if (delta > PI) delta -= 2 * PI;
+            if (delta < -PI) delta += 2 * PI;
+
+            float result = angle1 + delta * t;
+
+            // Wrapa tillbaka till 0–2π
+            return fmod((result + 2 * PI), (2 * PI));
+        }
+
+        // Om det är bara en basfärg
+        if (hueAngles.count(hueCode)) {
+            return hueAngles.at(hueCode);
+        }
+
+        throw std::invalid_argument("Ogiltig hue-kod: " + hueCode);
+    }
+
+    std::map<std::string, float> hue_Angles() const noexcept
+    {
+        return {
+        {"Y", 0.0f},
+        {"R", PI / 2.0f},
+        {"B", PI},
+        {"G", 3 * PI / 2.0f}
+        };
+    };
+
 };
+
+
+
 
 class NCSTriangle
 {
@@ -189,90 +403,12 @@ private:
             }
         }
     }
+
+
 };
 
-class ColorWheel
-{
-public:
-    struct Node
-    {
-        float angle;
-        RGB color;
-    };
 
-private:
-    std::vector<Node> wheel;
 
-public:
-    ColorWheel(const std::vector<Node>& nodes)
-    {
-        wheel = nodes;
-        std::sort(wheel.begin(), wheel.end(), [](const Node& a, const Node& b) {
-            return a.angle < b.angle;
-            });
-
-        // Lägg till en kopia av första färgen på slutet (för interpolering över 2π)
-        if (!wheel.empty()) 
-        {
-            Node wrap = wheel.front();
-            wrap.angle += 2 * PI;
-            wheel.push_back(wrap);
-        }
-    }
-
-    void draw(Vector2 position, float radius, unsigned int resolution) const 
-    {
-        for (unsigned int i = 0; i < resolution; ++i)
-        {
-            const float angle = (2 * PI * i) / resolution;
-            const RGB color = get_color(angle);
-            const Vector2 dir = { cosf(angle), sinf(angle) };
-
-            const float theta = 2 * PI / resolution;
-            const float squareSize = 2.0f * radius * sinf(theta / 2.0f);
-
-            const Vector2 center = {
-            position.x + dir.x * (radius + squareSize / 2.0f),
-            position.y + dir.y * (radius + squareSize / 2.0f)
-            };
-
-            const Rectangle rect = {
-                center.x,
-                center.y,
-                squareSize,
-                squareSize
-            };
-
-            DrawRectanglePro(
-                rect,
-                {  squareSize / 2 , squareSize / 2 },
-                angle * RAD2DEG,
-                color
-            );
-        }
-    }
-
-    RGB get_color(float radians) const noexcept
-    {
-        radians = fmod(radians, 2 * PI);
-        if (radians < 0) radians += 2 * PI;
-
-        for (size_t i = 0; i < wheel.size() - 1; ++i)
-        {
-            const Node& a = wheel[i];
-            const Node& b = wheel[i + 1];
-
-            if (radians >= a.angle && radians <= b.angle)
-            {
-                const float t = (radians - a.angle) / (b.angle - a.angle);
-                return OKlab_lerp(a.color, b.color, t);
-            }
-        }
-
-        return BLACK;
-    }
-private:
-};
 
 class ColorBicone3D
 {
@@ -326,30 +462,29 @@ private:
         // ÖVRE HALVA: från vit → kulör (färghjul)
         for (int i = 0; i < segments; ++i)
         {
-            float angle0 = i * angleStep;
-            float angle1 = (i + 1) * angleStep;
-
-            Color color0 = wheel.get_color(angle0);
+            const float angle0 = i * angleStep;
+            const float angle1 = (i + 1) * angleStep;
+            const Color color0 = wheel.get_color(angle0);
 
             for (unsigned int r = 0; r < tint_resolution; ++r)
             {
-                float t0 = (float)r / tint_resolution;
-                float t1 = (float)(r + 1) / tint_resolution;
-
-                // Vertikala nivåer
-                float y0 = Lerp(0.0f, halfHeight, t0);
-                float y1 = Lerp(0.0f, halfHeight, t1);
-
-                // Radier minskar mot toppen
-                float radius0 = radius * (1.0f - t0);
-                float radius1 = radius * (1.0f - t1);
-
-                Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
-                Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
-                Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
-                Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
-
-                Color c = OKlab_lerp( color0, WHITE, t0);
+                const float t0 = (float)r / tint_resolution;
+                const float t1 = (float)(r + 1) / tint_resolution;
+                 
+                 // Vertikala nivåer
+                const float y0 = Lerp(0.0f, halfHeight, t0);
+                const float y1 = Lerp(0.0f, halfHeight, t1);
+                 
+                const // Radier minskar mot toppen
+                const float radius0 = radius * (1.0f - t0);
+                const float radius1 = radius * (1.0f - t1);
+                 
+                const Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
+                const Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
+                const Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
+                const Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
+                 
+                const Color c = OKlab_lerp( color0, WHITE, t0);
 
                 // Två trianglar per rektangel-segment
                 vertices.push_back(v0); colors.push_back(c);
@@ -366,28 +501,27 @@ private:
         // UNDRE HALVA: från kulör (färghjul) → svart
         for (int i = 0; i < segments; ++i)
         {
-            float angle0 = i * angleStep;
-            float angle1 = (i + 1) * angleStep;
-
-            Color color0 = wheel.get_color(angle0);
+            const float angle0 = i * angleStep;
+            const float angle1 = (i + 1) * angleStep;
+            const Color color0 = wheel.get_color(angle0);
 
             for (unsigned int r = 0; r < tint_resolution; ++r)
             {
-                float t0 = (float)r / tint_resolution;
-                float t1 = (float)(r + 1) / tint_resolution;
-
-                float y0 = Lerp(0.0f, -halfHeight, t0);
-                float y1 = Lerp(0.0f, -halfHeight, t1);
-
-                float radius0 = radius * (1.0f - t0);
-                float radius1 = radius * (1.0f - t1);
-
-                Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
-                Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
-                Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
-                Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
-
-                Color c = OKlab_lerp(color0, BLACK, t1);
+                const float t0 = (float)r / tint_resolution;
+                const float t1 = (float)(r + 1) / tint_resolution;
+                 
+                const float y0 = Lerp(0.0f, -halfHeight, t0);
+                const float y1 = Lerp(0.0f, -halfHeight, t1);
+                 
+                const float radius0 = radius * (1.0f - t0);
+                const float radius1 = radius * (1.0f - t1);
+                 
+                const Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
+                const Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
+                const Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
+                const Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
+                 
+                const Color c = OKlab_lerp(color0, BLACK, t1);
 
                 vertices.push_back(v0); colors.push_back(c);
                 vertices.push_back(v3); colors.push_back(c);

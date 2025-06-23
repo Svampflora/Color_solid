@@ -57,10 +57,10 @@ std::unique_ptr<State> Play_screen::Update()
 [[gsl::suppress(f.6)]]
 Play_screen::Play_screen() : 
 	wheel({
-	{0.0f, NCS_RED},
-	{PI / 2, NCS_BLUE},
-	{PI , NCS_GREEN},
-	{3 * PI / 2, NCS_YELLOW}
+	{0.0f, NCS_YELLOW},
+	{PI / 2, NCS_RED},
+	{PI , NCS_BLUE},
+	{3 * PI / 2, NCS_GREEN}
 		}),
 	solid({ 0.0f, 0.0f, -4.0f }, 2.0f, 3.0f, 48, 12, wheel)
 

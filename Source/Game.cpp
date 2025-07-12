@@ -14,10 +14,14 @@ void Game::Update()
     }
 }
 
-void Game::Render() const noexcept 
+void Game::Render() const 
 {
     BeginDrawing();
     ClearBackground(BLACK);
+
+
 	current_state->Render();
+
+
     EndDrawing();
 }

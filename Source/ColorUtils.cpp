@@ -97,7 +97,8 @@ RGB OKLab_to_RGB(Lab_Color lab) noexcept
     g = powf(fmaxf(0.0f, fminf(1.0f, g)), 1.0f / 2.2f);
     b = powf(fmaxf(0.0f, fminf(1.0f, b)), 1.0f / 2.2f);
 
-    return {
+    return 
+    {
         narrow_cast<unsigned char>(r * 255.0f),
         narrow_cast<unsigned char>(g * 255.0f),
         narrow_cast<unsigned char>(b * 255.0f),
@@ -107,7 +108,8 @@ RGB OKLab_to_RGB(Lab_Color lab) noexcept
 
 RGB RGB_lerp(RGB a, RGB b, float t) noexcept
 {
-    return {
+    return 
+    {
         narrow_cast<unsigned char>(((1 - t) * a.r + t * b.r)),
         narrow_cast<unsigned char>(((1 - t) * a.g + t * b.g)),
         narrow_cast<unsigned char>(((1 - t) * a.b + t * b.b)),
@@ -164,23 +166,23 @@ RGB HSV_lerp(RGB a, RGB b, float t) noexcept
     return ColorFromHSV(h, s, v);
 }
 
-float deltaE76(Lab_Color c1, Lab_Color c2) 
-{
-    const float dL = c1.L - c2.L;
-    const float da = c1.a - c2.a;
-    const float db = c1.b - c2.b;
-    return sqrtf(dL * dL + da * da + db * db);
-}
+//float deltaE76(Lab_Color c1, Lab_Color c2) noexcept
+//{
+//    const float dL = c1.L - c2.L;
+//    const float da = c1.a - c2.a;
+//    const float db = c1.b - c2.b;
+//    return sqrtf(dL * dL + da * da + db * db);
+//}
 
-Lab_Color mix_colors(const std::vector<Lab_Color>& colors, const std::vector<float>& weights) 
+Lab_Color mix_colors(const std::vector<Lab_Color>& _colors, const std::vector<float>& _weights) noexcept
 {
     float L = 0, a = 0, b = 0, sum = 0;
-    for (size_t i = 0; i < colors.size(); ++i) 
+    for (size_t i = 0; i < _colors.size(); ++i) 
     {
-        L += colors[i].L * weights[i];
-        a += colors[i].a * weights[i];
-        b += colors[i].b * weights[i];
-        sum += weights[i];
+        L += _colors[i].L * _weights[i];
+        a += _colors[i].a * _weights[i];
+        b += _colors[i].b * _weights[i];
+        sum += _weights[i];
     }
 
     if (sum == 0) return { 0, 0, 0 };
@@ -191,7 +193,8 @@ Lab_Color mix_colors(const std::vector<Lab_Color>& colors, const std::vector<flo
 
 RGB Huecode_to_RGB(const std::string& hue)
 {
-    std::map<std::string, RGB> anchors = {
+    std::map<std::string, RGB> anchors = 
+    {
         {"Y", {255, 255, 0, 255}}, // gul
         {"R", {255, 0, 0, 255}},   // röd
         {"B", {0, 0, 255, 255}},   // blå
@@ -203,17 +206,17 @@ RGB Huecode_to_RGB(const std::string& hue)
 
     if (std::regex_match(hue, match, re)) {
         std::string h1 = match[1];
-        int pct = match[2].str().empty() ? 50 : std::stoi(match[2]);
+        const int pct = match[2].str().empty() ? 50 : std::stoi(match[2]);
         std::string h2 = match[3];
-        RGB c1 = anchors[h1];
-        RGB c2 = anchors[h2];
+        const RGB c1 = anchors[h1];
+        const RGB c2 = anchors[h2];
         return Lab_lerp(c1, c2, pct / 100.0f);
     }
 
     return { 127, 127, 127, 255 }; // fallback
 }
 
-RGB blend_colors(RGB c1, RGB c2, float ratio)
+RGB blend_colors(RGB c1, RGB c2, float ratio) noexcept
 {
     return Lab_lerp(c1, c2, ratio);
 }

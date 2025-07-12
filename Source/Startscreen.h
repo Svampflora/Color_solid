@@ -7,5 +7,5 @@ class Start_screen : public State
 public:
 	Start_screen() noexcept;
 	std::unique_ptr<State> Update() override;
-	void Render() const noexcept override;
+	void Render() const override;
 };

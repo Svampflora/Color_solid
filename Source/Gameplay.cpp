@@ -49,7 +49,7 @@ std::unique_ptr<State> Play_screen::Update()
 	}
 
 	const float scroll = GetMouseWheelMove();
-	solid.rotation.y += scroll * 5.0f; // Skala känsligheten
+	solid.rotation.y += scroll * 5.0f;
 
 	return nullptr;
 }
@@ -73,11 +73,10 @@ Play_screen::Play_screen() :
 	camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
 	camera.fovy = 45.0f;
 	camera.projection = CAMERA_PERSPECTIVE;
-	BeginMode3D(camera);
 
 }
 
-void Play_screen::Render()  const noexcept
+void Play_screen::Render()  const
 {
 	//Color targetRGB = NCS_To_RGB(ncsInput);
 	//DrawRectangle(400, 100, 100, 100, targetRGB);

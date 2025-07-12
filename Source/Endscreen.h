@@ -14,5 +14,5 @@ class End_screen : public State
 
 public:
 	std::unique_ptr<State> Update() override;
-	void Render() const noexcept override;
+	void Render() const override;
 };

@@ -96,14 +96,14 @@ public:
 
 private:
 
-    float find_hue(const std::vector<Paint>paints) const noexcept//TODO: take opacity in to account
+    float find_hue(const std::vector<Paint>paints) const //TODO: take opacity in to account
     {
         float sumX = 0, sumY = 0, total = 0;
         for (size_t i = 0; i < paints.size(); ++i)
         {
-            sumX += cos(paints[i].color.hue) * paints[i].amount * paints[i].color.chromaticness;
-            sumY += sin(paints[i].color.hue) * paints[i].amount * paints[i].color.chromaticness;
-            total += paints[i].amount;
+            sumX += cos(paints.at(i).color.hue) * paints.at(i).amount * paints.at(i).color.chromaticness;
+            sumY += sin(paints.at(i).color.hue) * paints.at(i).amount * paints.at(i).color.chromaticness;
+            total += paints.at(i).amount;
         }
         return atan2(sumY / total, sumX / total);
     }
@@ -113,8 +113,8 @@ private:
         float sum = 0, total = 0;
         for (size_t i = 0; i < values.size(); ++i)
         {
-            sum += values[i] * weights[i];
-            total += weights[i];
+            sum += values.at(i) * weights.at(i);
+            total += weights.at(i);
         }
         return sum / total;
     }
@@ -158,9 +158,10 @@ public:
     ColorWheel(const std::vector<Node>& nodes)
     {
         wheel = nodes;
-        std::sort(wheel.begin(), wheel.end(), [](const Node& a, const Node& b) {
-            return a.angle < b.angle;
-            });
+        std::sort(wheel.begin(), wheel.end(), [](const Node& a, const Node& b) 
+        {
+        return a.angle < b.angle;
+        });
 
         // Lägg till en kopia av första färgen på slutet (för interpolering över 2π)
         if (!wheel.empty())
@@ -171,7 +172,7 @@ public:
         }
     }
 
-    void draw(Vector2 position, float radius, unsigned int resolution) const
+    void draw(Vector2 position, float radius, unsigned int resolution) const noexcept
     {
         for (unsigned int i = 0; i < resolution; ++i)
         {
@@ -210,8 +211,8 @@ public:
 
         for (size_t i = 0; i < wheel.size() - 1; ++i)
         {
-            const Node& a = wheel[i];
-            const Node& b = wheel[i + 1];
+            const Node& a = wheel.at(i);
+            const Node& b = wheel.at(i + 1);
 
             if (radians >= a.angle && radians <= b.angle)
             {
@@ -226,7 +227,7 @@ private:
 };
 
 
-Lab_Color mix_colors(const std::vector<Lab_Color>& colors, const std::vector<float>& weights);
+Lab_Color mix_colors(const std::vector<Lab_Color>& colors, const std::vector<float>& weights) noexcept;
 
 constexpr RGB NCS_GREEN{ 0, 158, 107, 255 };
 constexpr RGB NCS_RED {196, 3, 51, 255};
@@ -270,7 +271,7 @@ struct NCS_Color
         return std::string(buf);
     }
 
-    void draw(Vector2 position, Vector2 size) const noexcept
+    void draw(Vector2 position, Vector2 size) const
     {
         DrawRectangleV(position, size, rgb);
         DrawTextF(this->to_string().c_str(), position.x, position.y + size.y, narrow_cast<int>(0.5f * size.y), WHITE);
@@ -300,57 +301,56 @@ private:
         }
     }
 
-    float hueCode_to_radians(const std::string& hueCode) const 
+    float hueCode_to_radians(const std::string& _hueCode) const 
     {
-        if (hueCode == "N") return 0.0f;
+        if (_hueCode == "N") return 0.0f;
 
         std::map<std::string, float> hueAngles = hue_Angles();
         std::regex re(R"(([A-Z]+)(\d{2})([A-Z]+))");
         std::smatch match;
 
-        if (std::regex_match(hueCode, match, re)) {
+        if (std::regex_match(_hueCode, match, re))
+        {
             std::string base1 = match[1];
-            int percent = std::stoi(match[2]);
+            const int percent = std::stoi(match[2]);
             std::string base2 = match[3];
 
-            float angle1 = hueAngles.at(base1);
-            float angle2 = hueAngles.at(base2);
-
-            float t = percent / 100.0f;
+            const float angle1 = hueAngles.at(base1);
+            const float angle2 = hueAngles.at(base2);
+             
+            const float t = percent / 100.0f;
 
             // Interpolera vinklar cirkulärt
             float delta = angle2 - angle1;
             if (delta > PI) delta -= 2 * PI;
             if (delta < -PI) delta += 2 * PI;
 
-            float result = angle1 + delta * t;
+            const float result = angle1 + delta * t;
 
             // Wrapa tillbaka till 0–2π
             return fmod((result + 2 * PI), (2 * PI));
         }
 
         // Om det är bara en basfärg
-        if (hueAngles.count(hueCode)) {
-            return hueAngles.at(hueCode);
+        if (hueAngles.count(_hueCode)) 
+        {
+            return hueAngles.at(_hueCode);
         }
 
-        throw std::invalid_argument("Ogiltig hue-kod: " + hueCode);
+        throw std::invalid_argument("Ogiltig hue-kod: " + _hueCode);
     }
 
-    std::map<std::string, float> hue_Angles() const noexcept
+    std::map<std::string, float> hue_Angles() const
     {
-        return {
-        {"Y", 0.0f},
-        {"R", PI / 2.0f},
-        {"B", PI},
-        {"G", 3 * PI / 2.0f}
+        return
+        {
+            {"Y", 0.0f},
+            {"R", PI / 2.0f},
+            {"B", PI},
+            {"G", 3 * PI / 2.0f}
         };
     };
-
 };
-
-
-
 
 class NCSTriangle
 {
@@ -403,12 +403,7 @@ private:
             }
         }
     }
-
-
 };
-
-
-
 
 class ColorBicone3D
 {
@@ -468,14 +463,14 @@ private:
 
             for (unsigned int r = 0; r < tint_resolution; ++r)
             {
-                const float t0 = (float)r / tint_resolution;
-                const float t1 = (float)(r + 1) / tint_resolution;
+                const float t0 = static_cast<float>(r) / tint_resolution;
+                const float t1 = static_cast<float>((r + 1)) / tint_resolution;
                  
                  // Vertikala nivåer
                 const float y0 = Lerp(0.0f, halfHeight, t0);
                 const float y1 = Lerp(0.0f, halfHeight, t1);
                  
-                const // Radier minskar mot toppen
+
                 const float radius0 = radius * (1.0f - t0);
                 const float radius1 = radius * (1.0f - t1);
                  

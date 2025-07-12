@@ -15,7 +15,7 @@ std::unique_ptr<State> End_screen::Update()
 	return nullptr;
 }
 
-void End_screen::Render() const noexcept
+void End_screen::Render() const
 {
 
 }

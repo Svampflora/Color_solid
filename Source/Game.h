@@ -13,5 +13,5 @@ class Game
 
 public:
 	void Update();
-	void Render() const noexcept;
+	void Render() const;
 };

@@ -41,3 +41,4 @@ static inline Vector2 GetScreenCenter() noexcept
 {
 	return {GetScreenWidthF(), GetScreenHeightF()};
 }
+

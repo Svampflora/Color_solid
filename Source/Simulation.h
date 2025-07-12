@@ -152,8 +152,10 @@ class Simulation : public State
 {
 	Camera3D camera = { 0 };
 	Room room{};
+    Vector3 room_position = { 0.0f,0.0f,0.0f };
     Vector2 camera_angle = { 0.0f , 0.0f };
     float camera_distance = 10.0f; // Avstånd från rummet
+    unsigned int coats = 2;
 
 
 public:
@@ -190,7 +192,7 @@ public:
         camera.position.x = sinf(camera_angle.x) * camera_distance;
         camera.position.z = cosf(camera_angle.y) * camera_distance;
 
-        const Vector3 target = { 0.0f, room.height / 2.0f, -8.0f };
+        const Vector3 target = room_position;
 
         camera.position = 
         {
@@ -208,13 +210,27 @@ public:
 	{
         BeginMode3D(camera);
 
-        const Vector3 room_position{ 0.0f, 0.0f, -8.0f };
+        DrawPlane(
+            Vector3{ room_position.x, room_position.y - 0.5f * room.height, room_position.z },
+            Vector2{ room.width, room.length },
+            DARKGRAY
+        );
         room.Render(room_position);
+        DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.width), { room_position.x - 0.5f * room.width, room_position.y - 0.5f * room.height, room_position.y + 0.5f * room.length }, 0.4f,0.1f,1.0f, true, WHITE);
+
+
+        rlPushMatrix();
+        rlRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+        DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.length), { room_position.x - 0.5f * room.length, room_position.y - 0.5f * room.height, room_position.y + 0.5f * room.width }, 0.4f, 0.1f, 1.0f, true, WHITE);
+        rlPopMatrix();
 
         EndMode3D();
 
-        const float liters = Calculator::Liters_of_color(room, 6.0f);
-        DrawText(TextFormat("Beräknad färgåtgång: %.2f liter", liters), 20, 20, 20, RAYWHITE);
+        const float liters = Calculator::Liters_of_color(room, 8.0f, coats);
+        DrawText(TextFormat("Beräknad färgåtgång: %.1f L", liters), 20, 20, 50, RAYWHITE);
+        DrawText(TextFormat("Golvyta: %.1f M2", room.Floor_area()), 20, 80, 50, RAYWHITE);
+        DrawText(TextFormat("Strykningar: %.0f st", coats), 20, 120, 50, RAYWHITE);
+
 
 	};
 

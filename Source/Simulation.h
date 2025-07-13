@@ -4,9 +4,35 @@
 #include "ColorUtils.h"
 #include "Endscreen.h"
 #include <format>
+#include <array>
 //------------ text utils --------------------
-
+#include <codeanalysis\warnings.h>
+#pragma warning(push)
+#pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
 #include "rlgl.h"
+#pragma warning(pop)
+
+struct RayHit
+{
+    bool hit;
+    Vector3 point;
+};
+RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance)
+{
+    RayHit result{ false, Vector3Zero() };
+
+    float denom = Vector3DotProduct(planeNormal, ray.direction);
+    if (fabs(denom) > 1e-6f) 
+    {
+        float t = -(Vector3DotProduct(planeNormal, ray.position) + planeDistance) / denom;
+        if (t >= 0)
+        {
+            result.hit = true;
+            result.point = Vector3Add(ray.position, Vector3Scale(ray.direction, t));
+        }
+    }
+    return result;
+}
 
 
 static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint)
@@ -114,7 +140,11 @@ static inline void DrawText3D(Font font, const char* text, Vector3 position, flo
         i += codepointByteCount;   // Move text bytes counter to next codepoint
     }
 }
-
+static inline void DrawQuad(std::array<Vector3, 4> corners, Color color)
+{
+    DrawTriangle3D(corners[0], corners[1], corners[2], color);
+    DrawTriangle3D(corners[2], corners[3], corners[0], color);
+}
 
 
 struct Room
@@ -132,11 +162,76 @@ struct Room
         return width * length;
     }
 
-	void Render(Vector3 position) const
+	void Draw_corners(Vector3 position) const
 	{
 		DrawCubeWires(position, width,  height, length, WHITE);
 
 	};
+
+    void Draw_floor(Vector3 position, Color color) const 
+    {
+        DrawPlane(
+            Vector3{ position.x, position.y - 0.5f * height, position.z },
+            Vector2{ width, length },
+            color
+        );
+    }
+
+    void Draw_walls(Vector3 position, Color color) const
+    {
+        Draw_back_wall(position, color);
+        Draw_front_wall(position, color);
+        Draw_right_wall(position, color);
+        Draw_left_wall(position, color);
+    }
+
+    void Draw_back_wall(Vector3 position, Color color) const
+    {
+
+        DrawQuad(std::array<Vector3, 4>{
+                position.x - half_of(width), position.y - half_of(height), position.z - half_of(length) - 0.1f,
+                position.x + half_of(width), position.y - half_of(height), position.z - half_of(length) - 0.1f,
+                position.x + half_of(width), position.y + half_of(height), position.z - half_of(length) - 0.1f,
+                position.x - half_of(width), position.y + half_of(height), position.z - half_of(length) - 0.1f
+            }, color);
+    }
+
+    void Draw_front_wall(Vector3 position, Color color) const
+    {
+
+        DrawQuad(std::array<Vector3, 4>{
+                position.x + half_of(width), position.y - half_of(height), position.z + half_of(length) + 0.1f,
+                position.x - half_of(width), position.y - half_of(height), position.z + half_of(length) + 0.1f,
+                position.x - half_of(width), position.y + half_of(height), position.z + half_of(length) + 0.1f,
+                position.x + half_of(width), position.y + half_of(height), position.z + half_of(length) + 0.1f
+        }, color);
+    }
+
+    void Draw_left_wall(Vector3 position, Color color) const
+    {
+
+        DrawQuad(std::array<Vector3, 4>{
+                position.x - half_of(width) - 0.1f, position.y - half_of(height), position.z + half_of(length),
+                position.x - half_of(width) - 0.1f, position.y - half_of(height), position.z - half_of(length),
+                position.x - half_of(width) - 0.1f, position.y + half_of(height), position.z - half_of(length),
+                position.x - half_of(width) - 0.1f, position.y + half_of(height), position.z + half_of(length)
+        }, color);
+    }
+   
+    void Draw_right_wall(Vector3 position, Color color) const
+    {
+
+        DrawQuad(std::array<Vector3, 4>{
+                position.x + half_of(width) + 0.1f, position.y - half_of(height), position.z - half_of(length),
+                position.x + half_of(width) + 0.1f, position.y - half_of(height), position.z + half_of(length),
+                position.x + half_of(width) + 0.1f, position.y + half_of(height), position.z + half_of(length),
+                position.x + half_of(width) + 0.1f, position.y + half_of(height), position.z - half_of(length)
+        }, color);
+    }
+
+    
+
+
 };
 
 class Calculator
@@ -158,6 +253,13 @@ class Simulation : public State
     unsigned int coats = 2;
 
 
+    enum class WallHandle { None, Front, Back, Left, Right };
+
+    WallHandle activeHandle = WallHandle::None;
+    float minSize = 1.0f;
+    float maxSize = 10.0f;
+
+
 public:
 
 	Simulation() noexcept
@@ -174,17 +276,14 @@ public:
 	{
 		if (IsKeyReleased(KEY_Q))
 		{
-
 			return std::make_unique<End_screen>();
 		}
-
 
         if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
         {
             const Vector2 mouse_delta = GetMouseDelta();
             camera_angle.x -= mouse_delta.x * 0.01f;
             camera_angle.y += mouse_delta.y * 0.01f;
-
         }
 
         camera_distance += GetMouseWheelMove() * -0.5f;
@@ -202,34 +301,120 @@ public:
         };
         camera.target = target;
 
+        UpdateRoomEditing();
 
 		return nullptr;
 	};
+
+    void UpdateRoomEditing()
+    {
+
+
+        const Vector2 mouse = GetMousePosition();
+        WallHandle hovered = WallHandle::None;
+
+        // Vägghörn i världens koordinater
+        const float halfW = room.width / 2.0f;
+        const float halfL = room.length / 2.0f;
+        const float y = room_position.y;
+
+        // Kontrollpunkter
+        std::vector<std::pair<WallHandle, Vector3>> handles = {
+            { WallHandle::Front, { room_position.x, y, room_position.z + halfL } },
+            { WallHandle::Back,  { room_position.x, y, room_position.z - halfL } },
+            { WallHandle::Right, { room_position.x + halfW, y, room_position.z } },
+            { WallHandle::Left,  { room_position.x - halfW, y, room_position.z } },
+        };
+
+        const float radius = 10.0f;
+
+        for (auto& [handle, worldPos] : handles)
+        {
+            const Vector2 screenPos = GetWorldToScreen(worldPos, camera);
+            if (CheckCollisionPointCircle(mouse, screenPos, radius))
+            {
+                hovered = handle;
+
+                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+                {
+                    activeHandle = handle;
+                }
+
+                DrawCircleV(screenPos, radius, RED); 
+            }
+            else
+            {
+                DrawCircleV(screenPos, 4, GRAY);
+            }
+        }
+
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+        {
+            activeHandle = WallHandle::None;
+        }
+
+        if (activeHandle != WallHandle::None && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+        {
+            
+            const Ray ray = GetMouseRay(GetMousePosition(), camera);
+            const RayHit hit = RayIntersectPlane(ray, { 0, 1, 0 }, -room_position.y);
+
+            Vector3 hitPoint = Vector3Zero();
+
+            if (hit.hit)
+                hitPoint = RayIntersectPlane(ray, { 0, 1, 0 }, -room_position.y).point;
+
+            switch (activeHandle)
+            {
+            case WallHandle::Front:
+            case WallHandle::Back:
+            {
+                const float dist = fabsf(hitPoint.z - room_position.z);
+                room.length = Clamp(dist * 2.0f, minSize, maxSize);
+            } break;
+
+            case WallHandle::Left:
+            case WallHandle::Right:
+            {
+                const float dist = fabsf(hitPoint.x - room_position.x);
+                room.width = Clamp(dist * 2.0f, minSize, maxSize);
+            } break;
+
+            default: break;
+            }
+        }
+    }
 
 	void Render() const override
 	{
         BeginMode3D(camera);
 
-        DrawPlane(
-            Vector3{ room_position.x, room_position.y - 0.5f * room.height, room_position.z },
-            Vector2{ room.width, room.length },
-            DARKGRAY
-        );
-        room.Render(room_position);
+        room.Draw_floor(room_position, DARKGRAY);
+       // room.Draw_walls(room_position, PINK);
+        room.Draw_corners(room_position);
         DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.width), { room_position.x - 0.5f * room.width, room_position.y - 0.5f * room.height, room_position.y + 0.5f * room.length }, 0.4f,0.1f,1.0f, true, WHITE);
 
 
         rlPushMatrix();
         rlRotatef(90.0f, 0.0f, 1.0f, 0.0f);
         DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.length), { room_position.x - 0.5f * room.length, room_position.y - 0.5f * room.height, room_position.y + 0.5f * room.width }, 0.4f, 0.1f, 1.0f, true, WHITE);
+        DrawText3D(GetFontDefault(), TextFormat("%.1f M2", room.Floor_area()), { room_position.x , room_position.y - 0.49f * room.height, room_position.y }, 0.4f, 0.1f, 1.0f, true, WHITE);
+
         rlPopMatrix();
+
+
+        rlPushMatrix();
+        rlRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.height), { room_position.x + half_of(room.width), room_position.y - half_of(room.length), room_position.y - half_of(room.height) }, 0.4f, 0.1f, 1.0f, true, WHITE);
+        rlPopMatrix();
+
 
         EndMode3D();
 
         const float liters = Calculator::Liters_of_color(room, 8.0f, coats);
         DrawText(TextFormat("Beräknad färgåtgång: %.1f L", liters), 20, 20, 50, RAYWHITE);
         DrawText(TextFormat("Golvyta: %.1f M2", room.Floor_area()), 20, 80, 50, RAYWHITE);
-        DrawText(TextFormat("Strykningar: %.0f st", coats), 20, 120, 50, RAYWHITE);
+         DrawText(TextFormat("Strykningar: %i st", coats), 20, 120, 50, RAYWHITE);
 
 
 	};

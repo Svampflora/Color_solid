@@ -42,3 +42,9 @@ static inline Vector2 GetScreenCenter() noexcept
 	return {GetScreenWidthF(), GetScreenHeightF()};
 }
 
+static inline float constexpr half_of(float whole) 
+{
+	return 0.5f * whole;
+}
+
+

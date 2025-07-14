@@ -21,10 +21,10 @@ RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance)
 {
     RayHit result{ false, Vector3Zero() };
 
-    float denom = Vector3DotProduct(planeNormal, ray.direction);
+    const float denom = Vector3DotProduct(planeNormal, ray.direction);
     if (fabs(denom) > 1e-6f) 
     {
-        float t = -(Vector3DotProduct(planeNormal, ray.position) + planeDistance) / denom;
+        const float t = -(Vector3DotProduct(planeNormal, ray.position) + planeDistance) / denom;
         if (t >= 0)
         {
             result.hit = true;
@@ -146,12 +146,49 @@ static inline void DrawQuad(std::array<Vector3, 4> corners, Color color)
     DrawTriangle3D(corners[2], corners[3], corners[0], color);
 }
 
+inline const char* FormatMeasurement(float meters)
+{
+    return (meters >= 1.0f)
+        ? TextFormat("%.1f M", meters)
+        : TextFormat("%.0f CM", meters * 100.0f);
+}
+
+enum class ROOM_SURFACE { None, Front, Back, Left, Right, Ceiling };
+
+struct Door
+{
+    float width = 1.0f, height = 2.0f;
+    ROOM_SURFACE wall = ROOM_SURFACE::Front;
+
+    float Area() const noexcept
+    {
+        return width * height;
+    }
+
+};
 
 struct Room
 {
 	float width{ 4.0f }, length{ 5.0f }, height{ 2.5f};
 
-	float Wall_area() const noexcept
+    std::vector<Door> doors;
+
+    //void Add_door(Door _door)
+    //{
+    //    float combined_door_width;
+    //    for (auto d : doors)
+    //    {
+    //        if (d.wall == _door.wall)
+    //        {
+    //            combined_door_width += d.width;
+    //        }
+    //    }
+
+    //    if(combined_door_width + _door.width > )
+    //    doors.push_back(_door);
+    //}
+
+	float Total_wall_area() const noexcept
 	{
 		const float perimeter = 2 * (width + length);
 		return perimeter * height;
@@ -227,6 +264,7 @@ struct Room
                 position.x + half_of(width) + 0.1f, position.y + half_of(height), position.z + half_of(length),
                 position.x + half_of(width) + 0.1f, position.y + half_of(height), position.z - half_of(length)
         }, color);
+        
     }
 
     
@@ -239,7 +277,7 @@ class Calculator
 public:
 	static float Liters_of_color(Room room, float liters_per_meter, unsigned int coats = 2) noexcept
 	{
-		return coats * room.Wall_area() / liters_per_meter;
+		return (coats * room.Total_wall_area()) / liters_per_meter;
 	}
 };
 
@@ -253,11 +291,10 @@ class Simulation : public State
     unsigned int coats = 2;
 
 
-    enum class WallHandle { None, Front, Back, Left, Right };
 
-    WallHandle activeHandle = WallHandle::None;
-    float minSize = 1.0f;
-    float maxSize = 10.0f;
+    ROOM_SURFACE active_handle = ROOM_SURFACE::None;
+    float min_size = 1.0f;
+    float max_size = 10.0f;
 
 
 public:
@@ -311,78 +348,105 @@ public:
 
 
         const Vector2 mouse = GetMousePosition();
-        WallHandle hovered = WallHandle::None;
+        ROOM_SURFACE hovered = ROOM_SURFACE::None;
 
-        // Vägghörn i världens koordinater
-        const float halfW = room.width / 2.0f;
-        const float halfL = room.length / 2.0f;
+
         const float y = room_position.y;
 
-        // Kontrollpunkter
-        std::vector<std::pair<WallHandle, Vector3>> handles = {
-            { WallHandle::Front, { room_position.x, y, room_position.z + halfL } },
-            { WallHandle::Back,  { room_position.x, y, room_position.z - halfL } },
-            { WallHandle::Right, { room_position.x + halfW, y, room_position.z } },
-            { WallHandle::Left,  { room_position.x - halfW, y, room_position.z } },
+        std::vector<std::pair<ROOM_SURFACE, Vector3>> handles = {
+            { ROOM_SURFACE::Front, { room_position.x, y, room_position.z + half_of(room.length) } },
+            { ROOM_SURFACE::Back,  { room_position.x, y, room_position.z - half_of(room.length) } },
+            { ROOM_SURFACE::Right, { room_position.x + half_of(room.width), y, room_position.z } },
+            { ROOM_SURFACE::Left,  { room_position.x - half_of(room.width), y, room_position.z } },
+            { ROOM_SURFACE::Ceiling, { room_position.x, y + half_of(room.height), room_position.z } },
+
         };
 
-        const float radius = 10.0f;
+        constexpr float radius = 10.0f;
 
-        for (auto& [handle, worldPos] : handles)
+        for (auto& [handle, world_position] : handles)
         {
-            const Vector2 screenPos = GetWorldToScreen(worldPos, camera);
-            if (CheckCollisionPointCircle(mouse, screenPos, radius))
+            const Vector2 screen_position = GetWorldToScreen(world_position, camera);
+            if (CheckCollisionPointCircle(mouse, screen_position, radius))
             {
                 hovered = handle;
 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
                 {
-                    activeHandle = handle;
+                    active_handle = handle;
                 }
 
-                DrawCircleV(screenPos, radius, RED); 
+                DrawCircleV(screen_position, radius, RED); 
             }
             else
             {
-                DrawCircleV(screenPos, 4, GRAY);
+                DrawCircleV(screen_position, 4, GRAY);
             }
         }
 
         if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
         {
-            activeHandle = WallHandle::None;
+            active_handle = ROOM_SURFACE::None;
         }
 
-        if (activeHandle != WallHandle::None && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+        if (active_handle != ROOM_SURFACE::None && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
         {
             
             const Ray ray = GetMouseRay(GetMousePosition(), camera);
             const RayHit hit = RayIntersectPlane(ray, { 0, 1, 0 }, -room_position.y);
+            const RayHit ceiling_hit = RayIntersectPlane(ray, { 1, 0, 0 }, -room_position.x);
 
-            Vector3 hitPoint = Vector3Zero();
+
+            Vector3 hit_point = Vector3Zero();
+            Vector3 ceiling_hit_point = Vector3Zero();
+
 
             if (hit.hit)
-                hitPoint = RayIntersectPlane(ray, { 0, 1, 0 }, -room_position.y).point;
+            {
+                hit_point = hit.point;
 
-            switch (activeHandle)
+            }
+
+            if (ceiling_hit.hit)
             {
-            case WallHandle::Front:
-            case WallHandle::Back:
+                ceiling_hit_point = ceiling_hit.point;
+
+            }
+
+            switch (active_handle)
             {
-                const float dist = fabsf(hitPoint.z - room_position.z);
-                room.length = Clamp(dist * 2.0f, minSize, maxSize);
+            case ROOM_SURFACE::Front:
+            case ROOM_SURFACE::Back:
+            {
+                const float dist = fabsf(hit_point.z - room_position.z);
+                room.length = Clamp(dist * 2.0f, min_size, max_size);
             } break;
 
-            case WallHandle::Left:
-            case WallHandle::Right:
+            case ROOM_SURFACE::Left:
+            case ROOM_SURFACE::Right:
             {
-                const float dist = fabsf(hitPoint.x - room_position.x);
-                room.width = Clamp(dist * 2.0f, minSize, maxSize);
+                const float dist = fabsf(hit_point.x - room_position.x);
+                room.width = Clamp(dist * 2.0f, min_size, max_size);
+            } break;
+
+            case ROOM_SURFACE::Ceiling:
+            {
+                room.height = Clamp(2.0f * (ceiling_hit_point.y - room_position.y), 0.01f, 6.0f);
+
+
             } break;
 
             default: break;
             }
         }
+
+        //if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
+        //{
+        //    Door door{};
+        //    door.wall = active_handle;
+
+        //    doors
+        //}
     }
 
 	void Render() const override
@@ -392,12 +456,12 @@ public:
         room.Draw_floor(room_position, DARKGRAY);
        // room.Draw_walls(room_position, PINK);
         room.Draw_corners(room_position);
-        DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.width), { room_position.x - 0.5f * room.width, room_position.y - 0.5f * room.height, room_position.y + 0.5f * room.length }, 0.4f,0.1f,1.0f, true, WHITE);
+        DrawText3D(GetFontDefault(), FormatMeasurement(room.width), { room_position.x - half_of(room.width), room_position.y - half_of(room.height), room_position.y + half_of(room.length) }, 0.4f,0.1f,1.0f, true, WHITE);
 
 
         rlPushMatrix();
         rlRotatef(90.0f, 0.0f, 1.0f, 0.0f);
-        DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.length), { room_position.x - 0.5f * room.length, room_position.y - 0.5f * room.height, room_position.y + 0.5f * room.width }, 0.4f, 0.1f, 1.0f, true, WHITE);
+        DrawText3D(GetFontDefault(), FormatMeasurement(room.length), { room_position.x - half_of(room.length), room_position.y - half_of(room.height), room_position.y + half_of(room.width) }, 0.4f, 0.1f, 1.0f, true, WHITE);
         DrawText3D(GetFontDefault(), TextFormat("%.1f M2", room.Floor_area()), { room_position.x , room_position.y - 0.49f * room.height, room_position.y }, 0.4f, 0.1f, 1.0f, true, WHITE);
 
         rlPopMatrix();
@@ -405,14 +469,14 @@ public:
 
         rlPushMatrix();
         rlRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-        DrawText3D(GetFontDefault(), TextFormat("%.1f M", room.height), { room_position.x + half_of(room.width), room_position.y - half_of(room.length), room_position.y - half_of(room.height) }, 0.4f, 0.1f, 1.0f, true, WHITE);
+        DrawText3D(GetFontDefault(), FormatMeasurement(room.height), { room_position.x + half_of(room.width), room_position.y - half_of(room.length), room_position.y - half_of(room.height) }, 0.4f, 0.1f, 1.0f, true, WHITE);
         rlPopMatrix();
 
 
         EndMode3D();
 
         const float liters = Calculator::Liters_of_color(room, 8.0f, coats);
-        DrawText(TextFormat("Beräknad färgåtgång: %.1f L", liters), 20, 20, 50, RAYWHITE);
+        DrawText(TextFormat("Beräknad färgåtgång: %.1f L", liters), 20, 40, 50, RAYWHITE);
         DrawText(TextFormat("Golvyta: %.1f M2", room.Floor_area()), 20, 80, 50, RAYWHITE);
          DrawText(TextFormat("Strykningar: %i st", coats), 20, 120, 50, RAYWHITE);
 

@@ -10,7 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
 #include "rlgl.h"
-#pragma warning(pop)
+
 
 struct RayHit
 {
@@ -35,12 +35,12 @@ RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance)
 }
 
 
-static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint)
+static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint) 
 {
     // Character index position in sprite font
     // NOTE: In case a codepoint is not available in the font, index returned points to '?'
-    int index = GetGlyphIndex(font, codepoint);
-    float scale = fontSize / (float)font.baseSize;
+    const int index = GetGlyphIndex(font, codepoint);
+    const float scale = fontSize / (float)font.baseSize;
 
     // Character destination rectangle on screen
     // NOTE: We consider charsPadding on drawing
@@ -49,11 +49,11 @@ static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 positio
 
     // Character source rectangle from font texture atlas
     // NOTE: We consider chars padding when drawing, it could be required for outline/glow shader effects
-    Rectangle srcRec = { font.recs[index].x - (float)font.glyphPadding, font.recs[index].y - (float)font.glyphPadding,
+    const Rectangle srcRec = { font.recs[index].x - (float)font.glyphPadding, font.recs[index].y - (float)font.glyphPadding,
                          font.recs[index].width + 2.0f * font.glyphPadding, font.recs[index].height + 2.0f * font.glyphPadding };
 
-    float width = (float)(font.recs[index].width + 2.0f * font.glyphPadding) * scale;
-    float height = (float)(font.recs[index].height + 2.0f * font.glyphPadding) * scale;
+    const float width = (float)(font.recs[index].width + 2.0f * font.glyphPadding) * scale;
+    const float height = (float)(font.recs[index].height + 2.0f * font.glyphPadding) * scale;
 
     if (font.texture.id > 0)
     {
@@ -79,8 +79,8 @@ static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 positio
 
         // Front Face
         rlNormal3f(0.0f, 1.0f, 0.0f);                                   // Normal Pointing Up
-        rlTexCoord2f(tx, ty); rlVertex3f(x, y, z);              // Top Left Of The Texture and Quad
-        rlTexCoord2f(tx, th); rlVertex3f(x, y, z + height);     // Bottom Left Of The Texture and Quad
+        rlTexCoord2f(tx, ty); rlVertex3f(x, y, z);                      // Top Left Of The Texture and Quad
+        rlTexCoord2f(tx, th); rlVertex3f(x, y, z + height);              // Bottom Left Of The Texture and Quad
         rlTexCoord2f(tw, th); rlVertex3f(x + width, y, z + height);     // Bottom Right Of The Texture and Quad
         rlTexCoord2f(tw, ty); rlVertex3f(x + width, y, z);              // Top Right Of The Texture and Quad
 
@@ -88,10 +88,10 @@ static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 positio
         {
             // Back Face
             rlNormal3f(0.0f, -1.0f, 0.0f);                              // Normal Pointing Down
-            rlTexCoord2f(tx, ty); rlVertex3f(x, y, z);          // Top Right Of The Texture and Quad
+            rlTexCoord2f(tx, ty); rlVertex3f(x, y, z);                   // Top Right Of The Texture and Quad
             rlTexCoord2f(tw, ty); rlVertex3f(x + width, y, z);          // Top Left Of The Texture and Quad
             rlTexCoord2f(tw, th); rlVertex3f(x + width, y, z + height); // Bottom Left Of The Texture and Quad
-            rlTexCoord2f(tx, th); rlVertex3f(x, y, z + height); // Bottom Right Of The Texture and Quad
+            rlTexCoord2f(tx, th); rlVertex3f(x, y, z + height);         // Bottom Right Of The Texture and Quad
         }
         rlEnd();
         rlPopMatrix();
@@ -146,6 +146,8 @@ static inline void DrawQuad(std::array<Vector3, 4> corners, Color color)
     DrawTriangle3D(corners[2], corners[3], corners[0], color);
 }
 
+#pragma warning(pop)
+
 inline const char* FormatMeasurement(float meters)
 {
     return (meters >= 1.0f)
@@ -155,10 +157,13 @@ inline const char* FormatMeasurement(float meters)
 
 enum class ROOM_SURFACE { None, Front, Back, Left, Right, Ceiling };
 
-struct Door
+struct Attribute
 {
+    enum class Type {Door, Window};
+
     float width = 1.0f, height = 2.0f;
-    ROOM_SURFACE wall = ROOM_SURFACE::Front;
+    Type type = Type::Door;
+
 
     float Area() const noexcept
     {
@@ -167,36 +172,90 @@ struct Door
 
 };
 
+
 struct Room
 {
 	float width{ 4.0f }, length{ 5.0f }, height{ 2.5f};
 
-    std::vector<Door> doors;
+    std::vector<Attribute> front;
+    std::vector<Attribute> back;
+    std::vector<Attribute> left;
+    std::vector<Attribute> right;
 
-    //void Add_door(Door _door)
-    //{
-    //    float combined_door_width;
-    //    for (auto d : doors)
-    //    {
-    //        if (d.wall == _door.wall)
-    //        {
-    //            combined_door_width += d.width;
-    //        }
-    //    }
+    Rectangle Wall(ROOM_SURFACE surface) const noexcept
+    {
+        switch (surface)
+        {
+            case ROOM_SURFACE::Front:
+            case ROOM_SURFACE::Back:
+            {
+                return{ width, height };
+            } break;
 
-    //    if(combined_door_width + _door.width > )
-    //    doors.push_back(_door);
-    //}
-
+            case ROOM_SURFACE::Left:
+            case ROOM_SURFACE::Right:
+            {
+                return { length, height };
+            }
+            case ROOM_SURFACE::Ceiling:
+            {
+                return { width, length };
+            }
+        }
+        return { 0.0f, 0.0f };
+    }
 	float Total_wall_area() const noexcept
 	{
 		const float perimeter = 2 * (width + length);
 		return perimeter * height;
 	}
-
     float Floor_area() const noexcept
     {
         return width * length;
+    }
+    bool Add_door(Rectangle dimensions, ROOM_SURFACE surface)
+    {
+        Attribute door{ dimensions.x, dimensions.y, Attribute::Type::Door };
+        const float spacing = 0.5f;
+
+        switch (surface)
+        {
+            case ROOM_SURFACE::Front:
+            {
+                float totalWidth = 0.0f;
+
+                for (const auto& o : front)
+                {
+                    totalWidth += o.width + spacing;
+                }
+
+                totalWidth += dimensions.width;
+
+                if (totalWidth + spacing * front.size() <= width)
+                {
+                    front.push_back(door);
+                    return true;
+                }
+                return false;
+            }
+            
+
+            case ROOM_SURFACE::Back:
+            {
+                //back.push_back(door);
+            }
+
+            case ROOM_SURFACE::Left:
+            {
+                //left.push_back(door);
+            }
+
+            case ROOM_SURFACE::Right:
+            {
+                //right.push_back(door);
+            }
+        }
+        return false;
     }
 
 	void Draw_corners(Vector3 position) const
@@ -204,7 +263,6 @@ struct Room
 		DrawCubeWires(position, width,  height, length, WHITE);
 
 	};
-
     void Draw_floor(Vector3 position, Color color) const 
     {
         DrawPlane(
@@ -213,7 +271,6 @@ struct Room
             color
         );
     }
-
     void Draw_walls(Vector3 position, Color color) const
     {
         Draw_back_wall(position, color);
@@ -221,7 +278,6 @@ struct Room
         Draw_right_wall(position, color);
         Draw_left_wall(position, color);
     }
-
     void Draw_back_wall(Vector3 position, Color color) const
     {
 
@@ -232,7 +288,6 @@ struct Room
                 position.x - half_of(width), position.y + half_of(height), position.z - half_of(length) - 0.1f
             }, color);
     }
-
     void Draw_front_wall(Vector3 position, Color color) const
     {
 
@@ -243,7 +298,6 @@ struct Room
                 position.x + half_of(width), position.y + half_of(height), position.z + half_of(length) + 0.1f
         }, color);
     }
-
     void Draw_left_wall(Vector3 position, Color color) const
     {
 
@@ -254,7 +308,6 @@ struct Room
                 position.x - half_of(width) - 0.1f, position.y + half_of(height), position.z + half_of(length)
         }, color);
     }
-   
     void Draw_right_wall(Vector3 position, Color color) const
     {
 
@@ -266,7 +319,13 @@ struct Room
         }, color);
         
     }
-
+    void Draw_attributes()
+    {
+        //for each (auto door in front)
+        //{
+        //    Draw
+        //}
+    }
     
 
 
@@ -440,13 +499,10 @@ public:
             }
         }
 
-        //if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
-        //{
-        //    Door door{};
-        //    door.wall = active_handle;
-
-        //    doors
-        //}
+        if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
+        {
+            room.Add_door({ 1.0f, 2.0f }, active_handle);
+        }
     }
 
 	void Render() const override
@@ -456,6 +512,8 @@ public:
         room.Draw_floor(room_position, DARKGRAY);
        // room.Draw_walls(room_position, PINK);
         room.Draw_corners(room_position);
+        //room.Draw_attributes();
+
         DrawText3D(GetFontDefault(), FormatMeasurement(room.width), { room_position.x - half_of(room.width), room_position.y - half_of(room.height), room_position.y + half_of(room.length) }, 0.4f,0.1f,1.0f, true, WHITE);
 
 

@@ -247,6 +247,18 @@ static inline void DrawRectangleLinesEx3D(Vector3 center, Vector2 size, Vector3 
     DrawLine3D(bottomRight, bottomLeft, color);
     DrawLine3D(bottomLeft, topLeft, color);
 }
+static inline void DrawPolygonLinesEx3D(const std::vector<Vector3>& points, Color color)
+{
+    if (points.size() < 2) return;
+
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        const Vector3& a = points[i];
+        const Vector3& b = points[(i + 1) % points.size()];
+
+        DrawLine3D(a, b, color);
+    }
+}
 static inline void DrawTriangleFan3D(const std::vector<Vector3>& points, Color color)
 {
     size_t vertex_minimum = 3;
@@ -306,7 +318,7 @@ struct Wall
     std::vector<size_t> corner_indices;
     std::vector<Attribute> openings{};
 
-    bool Try_add_opening(const Attribute& opening) 
+    bool Try_add_opening(const Attribute& opening, const std::vector<Vector3> room_corners)
     {
         const float spacing = 0.5f;
         float totalWidth = 0.0f;
@@ -315,26 +327,26 @@ struct Wall
            totalWidth += o.width + spacing;
         }
         totalWidth += opening.width;
-        if (totalWidth + spacing * openings.size() <= Length()) 
+        if (totalWidth + spacing * openings.size() <= Length(room_corners))
         {
             openings.push_back(opening);
             return true;
         }
         return false;
     }
-    float Length(const std::vector<Vector3> corners) const 
+    float Length(const std::vector<Vector3> room_corners) const
     {
-        if (corners.size() < 2) return 0.0f;
+        if (room_corners.size() < 2) return 0.0f;
 
-        Vector3 lowest1 = corners.at(corner_indices.at(0));
-        Vector3 lowest2 = corners.at(corner_indices.at(1));
+        Vector3 lowest1 = room_corners.at(corner_indices.at(0));
+        Vector3 lowest2 = room_corners.at(corner_indices.at(1));
 
         if (lowest2.y < lowest1.y)
             std::swap(lowest1, lowest2);
 
         for (size_t i : corner_indices) 
         {
-            const Vector3& p = corners[i];
+            const Vector3& p = room_corners[i];
 
             if (p.y < lowest1.y) 
             {
@@ -353,59 +365,119 @@ struct Wall
 
         return Vector2Distance({ lowest1.x, lowest1.z }, { lowest2.x, lowest2.z });
     }
-    float Height(const std::vector<Vector3> corners) const 
+    float Height(const std::vector<Vector3> room_corners) const
     {
-        if (corners.size() < 2) return 0.0f;
+        if (room_corners.size() < 2) return 0.0f;
 
-        float min_y = corners.at(corner_indices.at(0)).y;
-        float max_y = corners.at(corner_indices.at(0)).y;
+        float min_y = room_corners.at(corner_indices.at(0)).y;
+        float max_y = room_corners.at(corner_indices.at(0)).y;
 
         for (size_t i : corner_indices)
         {
-            if (corners.at(i).y < min_y) min_y = corners.at(i).y;
-            if (corners.at(i).y > max_y) max_y = corners.at(i).y;
+            if (room_corners.at(i).y < min_y) min_y = room_corners.at(i).y;
+            if (room_corners.at(i).y > max_y) max_y = room_corners.at(i).y;
         }
 
         return max_y - min_y;
     }
+    float Area(const std::vector<Vector3> room_corners)
+    {
+        if (corner_indices.size() < 3) return 0.0f;
 
-    float Area()
-    {
-        return Length() * height;
-    }
-    Vector3 Center() const
-    {
-        const Vector3 base_center = Vector3Lerp(start, end, 0.5f);
-        return Vector3Add(base_center, { 0.0f, height / 2.0f, 0.0f });
-    }
-    std::array<Vector3, 4> Quad() const noexcept
-    {
-        const Vector3 up = { 0.0f, 1.0f, 0.0f };
+        std::vector<Vector3> points;
+        for (size_t idx : corner_indices) {
+            points.push_back(room_corners[idx]);
+        }
 
-        const Vector3 p0 = start;
-        const Vector3 p1 = end;
-        const Vector3 p2 = Vector3Add(p1, Vector3Scale(up, height));
-        const Vector3 p3 = Vector3Add(p0, Vector3Scale(up, height));
+        const Vector3 u = Vector3Subtract(points[1], points[0]);         
+        const Vector3 u_dir = Vector3Normalize(u);
+        const Vector3 v_dir = Vector3Normalize(Vector3CrossProduct(Normal(room_corners), u_dir));
+
+        std::vector<Vector2> projected;
+        const Vector3 origin = points[0];
+
+        for (const Vector3& p : points) {
+            const Vector3 rel = Vector3Subtract(p, origin);
+            const float x = Vector3DotProduct(rel, u_dir);
+            const float y = Vector3DotProduct(rel, v_dir);
+            projected.push_back({ x, y });
+        }
+
+        float area = 0.0f;
+        const size_t n = projected.size();
+        for (size_t i = 0; i < n; ++i) {
+            const Vector2& a = projected[i];
+            const Vector2& b = projected[(i + 1) % n];
+            area += (a.x * b.y - b.x * a.y);
+        }
+
+        return std::abs(area * 0.5f);
+    }
+    Vector3 Center(const std::vector<Vector3> room_corners) const
+    {
+        if (corner_indices.empty()) return Vector3Zero();
+
+        Vector3 sum = Vector3Zero();
+        for (size_t index : corner_indices) {
+            sum = Vector3Add(sum, room_corners[index]);
+        }
+
+        return Vector3Scale(sum, 1.0f / static_cast<float>(corner_indices.size()));
+    }
+    Vector3 Normal(const std::vector<Vector3> room_corners) const
+    {
+        if (corner_indices.size() < 3) return Vector3Zero();
+
+        std::array<Vector3, 3 > points = Corners(room_corners);
+
+        const Vector3 u = Vector3Subtract(points.at(1), points.at(0));
+        const Vector3 v = Vector3Subtract(points.at(2), points.at(0));
+        return Vector3Normalize(Vector3CrossProduct(u, v));
+    }
+
+    std::vector<Vector3> Corners(const std::vector<Vector3> room_corners) const
+    {
+        if (corner_indices.size() < 3) throw;
+
+        std::vector<Vector3> corners;
+        corners.reserve(corner_indices.size());
+
+        for (auto vec3 : room_corners)
+        {
+            corners.emplace_back(vec3);
+        }
+        return corners;
+    }
+
+    std::array<Vector3, 4> Quad(const std::vector<Vector3> room_corners) const
+    {
+        if (corner_indices.size() < 4) throw;
+
+
+        const Vector3 p0 = room_corners.at(corner_indices.at(0));
+        const Vector3 p1 = room_corners.at(corner_indices.at(1));
+        const Vector3 p2 = room_corners.at(corner_indices.at(2));
+        const Vector3 p3 = room_corners.at(corner_indices.at(3));
 
         return{ p0, p1, p2, p3 };
     }
+    std::array<Vector3, 3> Triangle(const std::vector<Vector3> room_corners) const
+    {
+        if (corner_indices.size() < 3) throw;
 
-    void Draw(const Color color) const
+
+        const Vector3 p0 = room_corners.at(corner_indices.at(0));
+        const Vector3 p1 = room_corners.at(corner_indices.at(1));
+        const Vector3 p2 = room_corners.at(corner_indices.at(2));
+
+        return{ p0, p1, p2 };
+    }
+
+    void Draw(const std::vector<Vector3> room_corners, const Color color) const
     {
         const Vector3 up = { 0.0f, 1.0f, 0.0f };
 
-        const Vector3 direction = Vector3Subtract(end, start);
-        const float length = Vector3Length(direction);
-        //const float angle = atan2f(direction.z, direction.x) * RAD2DEG;
-        const Vector3 normal = Vector3Normalize({ -direction.z, 0.0f, direction.x });
-
-        DrawRectangleLinesEx3D(
-            Center(),                         // position
-            { length, height },             // dimensions
-            normal,                         // normal
-            0.0f,                         // rotation
-            color
-        );
+        DrawPolygonLinesEx3D(Corners(room_corners), color);
     }
     void Draw_filled(const Color color) const
     {

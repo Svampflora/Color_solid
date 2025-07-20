@@ -10,7 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
 #include "rlgl.h"
-
+#include <raymath.h>
 
 struct RayHit
 {
@@ -34,6 +34,18 @@ RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance)
     return result;
 }
 
+enum class TextAnchor3D
+{
+    Center,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+    TopCenter,
+    BottomCenter,
+    MiddleLeft,
+    MiddleRight
+};
 
 static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint) 
 {
@@ -140,13 +152,124 @@ static inline void DrawText3D(Font font, const char* text, Vector3 position, flo
         i += codepointByteCount;   // Move text bytes counter to next codepoint
     }
 }
+Vector3 GetAnchoredTextPosition3D(Font font, const char* text, Vector3 center, float fontSize, TextAnchor3D anchor)
+{
+    const int length = TextLength(text);
+    float scale = fontSize / (float)font.baseSize;
+    float textWidth = 0.0f;
+
+    for (int i = 0; i < length;)
+    {
+        int codepointByteCount = 0;
+        int codepoint = GetCodepoint(&text[i], &codepointByteCount);
+        int index = GetGlyphIndex(font, codepoint);
+        textWidth += (font.glyphs[index].advanceX > 0 ? font.glyphs[index].advanceX : font.recs[index].width) * scale;
+        i += codepointByteCount;
+    }
+
+    float textHeight = fontSize;
+
+    Vector3 offset = { 0 };
+
+    switch (anchor)
+    {
+    case TextAnchor3D::Center:
+        offset = { -textWidth * 0.5f, 0, -textHeight * 0.5f };
+        break;
+    case TextAnchor3D::TopLeft:
+        offset = { 0, 0, 0 };
+        break;
+    case TextAnchor3D::TopRight:
+        offset = { -textWidth, 0, 0 };
+        break;
+    case TextAnchor3D::BottomLeft:
+        offset = { 0, 0, -textHeight };
+        break;
+    case TextAnchor3D::BottomRight:
+        offset = { -textWidth, 0, -textHeight };
+        break;
+    case TextAnchor3D::TopCenter:
+        offset = { -textWidth * 0.5f, 0, 0 };
+        break;
+    case TextAnchor3D::BottomCenter:
+        offset = { -textWidth * 0.5f, 0, -textHeight };
+        break;
+    case TextAnchor3D::MiddleLeft:
+        offset = { 0, 0, -textHeight * 0.5f };
+        break;
+    case TextAnchor3D::MiddleRight:
+        offset = { -textWidth, 0, -textHeight * 0.5f };
+        break;
+    }
+
+    return Vector3Add(center, offset);
+}
+
+
 static inline void DrawQuad(std::array<Vector3, 4> corners, Color color)
 {
     DrawTriangle3D(corners[0], corners[1], corners[2], color);
     DrawTriangle3D(corners[2], corners[3], corners[0], color);
 }
+static inline void BuildTangentBasis(Vector3 normal, Vector3& right, Vector3& up)
+{
+    if (fabsf(normal.y) < 0.999f)
+        right = Vector3Normalize(Vector3CrossProduct(normal, { 0, 1, 0 }));
+    else
+        right = Vector3Normalize(Vector3CrossProduct(normal, { 1, 0, 0 }));
+
+    up = Vector3Normalize(Vector3CrossProduct(right, normal));
+}
+static inline void DrawRectangleLinesEx3D(Vector3 center, Vector2 size, Vector3 normal, float rotation, Color color)
+{
+    Vector3 right, up;
+    BuildTangentBasis(normal, right, up);
+
+    float cosAngle = cosf(rotation);
+    float sinAngle = sinf(rotation);
+
+    Vector3 rotatedRight = Vector3Scale(right, cosAngle);
+    rotatedRight = Vector3Add(rotatedRight, Vector3Scale(up, sinAngle));
+
+    Vector3 rotatedUp = Vector3Scale(up, cosAngle);
+    rotatedUp = Vector3Subtract(rotatedUp, Vector3Scale(right, sinAngle));
+
+    float halfW = size.x / 2.0f;
+    float halfH = size.y / 2.0f;
+
+    Vector3 topLeft = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, halfH), Vector3Scale(rotatedRight, -halfW)));
+    Vector3 topRight = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, halfH), Vector3Scale(rotatedRight, +halfW)));
+    Vector3 bottomRight = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, -halfH), Vector3Scale(rotatedRight, +halfW)));
+    Vector3 bottomLeft = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, -halfH), Vector3Scale(rotatedRight, -halfW)));
+
+    DrawLine3D(topLeft, topRight, color);
+    DrawLine3D(topRight, bottomRight, color);
+    DrawLine3D(bottomRight, bottomLeft, color);
+    DrawLine3D(bottomLeft, topLeft, color);
+}
+static inline void DrawTriangleFan3D(const std::vector<Vector3>& points, Color color)
+{
+    size_t vertex_minimum = 3;
+    if (points.size() < vertex_minimum) return;
+
+    rlCheckRenderBatchLimit(3 * (narrow_cast<int>(points.size()) - 2));
+    rlBegin(RL_TRIANGLES);
+    rlColor4ub(color.r, color.g, color.b, color.a);
+
+    const Vector3 center = points[0];
+    for (size_t i = 1; i < points.size() - 1; ++i)
+    {
+        rlVertex3f(center.x, center.y, center.z);
+        rlVertex3f(points[i].x, points[i].y, points[i].z);
+        rlVertex3f(points[i + 1].x, points[i + 1].y, points[i + 1].z);
+    }
+
+    rlEnd();
+}
 
 #pragma warning(pop)
+
+
 
 inline const char* FormatMeasurement(float meters)
 {
@@ -155,7 +278,7 @@ inline const char* FormatMeasurement(float meters)
         : TextFormat("%.0f CM", meters * 100.0f);
 }
 
-enum class ROOM_SURFACE { None, Front, Back, Left, Right, Ceiling };
+
 
 struct Attribute
 {
@@ -169,165 +292,328 @@ struct Attribute
     {
         return width * height;
     }
-
 };
 
-
-struct Room
+struct Wall
 {
-	float width{ 4.0f }, length{ 5.0f }, height{ 2.5f};
-
-    std::vector<Attribute> front;
-    std::vector<Attribute> back;
-    std::vector<Attribute> left;
-    std::vector<Attribute> right;
-
-    Rectangle Wall(ROOM_SURFACE surface) const noexcept
+    struct Handle
     {
-        switch (surface)
-        {
-            case ROOM_SURFACE::Front:
-            case ROOM_SURFACE::Back:
-            {
-                return{ width, height };
-            } break;
+        bool hovered{ false };
+        bool selected{ false };
+        Wall* wall = nullptr;
+    };
 
-            case ROOM_SURFACE::Left:
-            case ROOM_SURFACE::Right:
-            {
-                return { length, height };
-            }
-            case ROOM_SURFACE::Ceiling:
-            {
-                return { width, length };
-            }
-        }
-        return { 0.0f, 0.0f };
-    }
-	float Total_wall_area() const noexcept
-	{
-		const float perimeter = 2 * (width + length);
-		return perimeter * height;
-	}
-    float Floor_area() const noexcept
+    std::vector<size_t> corner_indices;
+    std::vector<Attribute> openings{};
+
+    bool Try_add_opening(const Attribute& opening) 
     {
-        return width * length;
-    }
-    bool Add_door(Rectangle dimensions, ROOM_SURFACE surface)
-    {
-        Attribute door{ dimensions.x, dimensions.y, Attribute::Type::Door };
         const float spacing = 0.5f;
-
-        switch (surface)
+        float totalWidth = 0.0f;
+        for (const auto& o : openings)
         {
-            case ROOM_SURFACE::Front:
-            {
-                float totalWidth = 0.0f;
-
-                for (const auto& o : front)
-                {
-                    totalWidth += o.width + spacing;
-                }
-
-                totalWidth += dimensions.width;
-
-                if (totalWidth + spacing * front.size() <= width)
-                {
-                    front.push_back(door);
-                    return true;
-                }
-                return false;
-            }
-            
-
-            case ROOM_SURFACE::Back:
-            {
-                //back.push_back(door);
-            }
-
-            case ROOM_SURFACE::Left:
-            {
-                //left.push_back(door);
-            }
-
-            case ROOM_SURFACE::Right:
-            {
-                //right.push_back(door);
-            }
+           totalWidth += o.width + spacing;
+        }
+        totalWidth += opening.width;
+        if (totalWidth + spacing * openings.size() <= Length()) 
+        {
+            openings.push_back(opening);
+            return true;
         }
         return false;
     }
-
-	void Draw_corners(Vector3 position) const
-	{
-		DrawCubeWires(position, width,  height, length, WHITE);
-
-	};
-    void Draw_floor(Vector3 position, Color color) const 
+    float Length(const std::vector<Vector3> corners) const 
     {
-        DrawPlane(
-            Vector3{ position.x, position.y - 0.5f * height, position.z },
-            Vector2{ width, length },
+        if (corners.size() < 2) return 0.0f;
+
+        Vector3 lowest1 = corners.at(corner_indices.at(0));
+        Vector3 lowest2 = corners.at(corner_indices.at(1));
+
+        if (lowest2.y < lowest1.y)
+            std::swap(lowest1, lowest2);
+
+        for (size_t i : corner_indices) 
+        {
+            const Vector3& p = corners[i];
+
+            if (p.y < lowest1.y) 
+            {
+                lowest2 = lowest1;
+                lowest1 = p;
+            }
+            else if (p.y < lowest2.y) 
+            {
+                lowest2 = p;
+            }
+        }
+
+        constexpr float tolerance = 0.001f;
+        if (std::abs(lowest1.y - lowest2.y) > tolerance)
+            return 0.0f;
+
+        return Vector2Distance({ lowest1.x, lowest1.z }, { lowest2.x, lowest2.z });
+    }
+    float Height(const std::vector<Vector3> corners) const 
+    {
+        if (corners.size() < 2) return 0.0f;
+
+        float min_y = corners.at(corner_indices.at(0)).y;
+        float max_y = corners.at(corner_indices.at(0)).y;
+
+        for (size_t i : corner_indices)
+        {
+            if (corners.at(i).y < min_y) min_y = corners.at(i).y;
+            if (corners.at(i).y > max_y) max_y = corners.at(i).y;
+        }
+
+        return max_y - min_y;
+    }
+
+    float Area()
+    {
+        return Length() * height;
+    }
+    Vector3 Center() const
+    {
+        const Vector3 base_center = Vector3Lerp(start, end, 0.5f);
+        return Vector3Add(base_center, { 0.0f, height / 2.0f, 0.0f });
+    }
+    std::array<Vector3, 4> Quad() const noexcept
+    {
+        const Vector3 up = { 0.0f, 1.0f, 0.0f };
+
+        const Vector3 p0 = start;
+        const Vector3 p1 = end;
+        const Vector3 p2 = Vector3Add(p1, Vector3Scale(up, height));
+        const Vector3 p3 = Vector3Add(p0, Vector3Scale(up, height));
+
+        return{ p0, p1, p2, p3 };
+    }
+
+    void Draw(const Color color) const
+    {
+        const Vector3 up = { 0.0f, 1.0f, 0.0f };
+
+        const Vector3 direction = Vector3Subtract(end, start);
+        const float length = Vector3Length(direction);
+        //const float angle = atan2f(direction.z, direction.x) * RAD2DEG;
+        const Vector3 normal = Vector3Normalize({ -direction.z, 0.0f, direction.x });
+
+        DrawRectangleLinesEx3D(
+            Center(),                         // position
+            { length, height },             // dimensions
+            normal,                         // normal
+            0.0f,                         // rotation
             color
         );
     }
-    void Draw_walls(Vector3 position, Color color) const
+    void Draw_filled(const Color color) const
     {
-        Draw_back_wall(position, color);
-        Draw_front_wall(position, color);
-        Draw_right_wall(position, color);
-        Draw_left_wall(position, color);
+        DrawQuad(Quad(), color);
     }
-    void Draw_back_wall(Vector3 position, Color color) const
-    {
+};
 
-        DrawQuad(std::array<Vector3, 4>{
-                position.x - half_of(width), position.y - half_of(height), position.z - half_of(length) - 0.1f,
-                position.x + half_of(width), position.y - half_of(height), position.z - half_of(length) - 0.1f,
-                position.x + half_of(width), position.y + half_of(height), position.z - half_of(length) - 0.1f,
-                position.x - half_of(width), position.y + half_of(height), position.z - half_of(length) - 0.1f
-            }, color);
-    }
-    void Draw_front_wall(Vector3 position, Color color) const
-    {
+static inline RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall) 
+{
+    const Vector3 dir = Vector3Normalize(Vector3Subtract(wall.end, wall.start));
+    const Vector3 up = { 0.0f, 1.0f, 0.0f };
+    const Vector3 right = Vector3CrossProduct(up, dir);
 
-        DrawQuad(std::array<Vector3, 4>{
-                position.x + half_of(width), position.y - half_of(height), position.z + half_of(length) + 0.1f,
-                position.x - half_of(width), position.y - half_of(height), position.z + half_of(length) + 0.1f,
-                position.x - half_of(width), position.y + half_of(height), position.z + half_of(length) + 0.1f,
-                position.x + half_of(width), position.y + half_of(height), position.z + half_of(length) + 0.1f
-        }, color);
-    }
-    void Draw_left_wall(Vector3 position, Color color) const
-    {
+    const Vector3 p0 = wall.start;
+    const Vector3 p1 = wall.end;
+    const Vector3 p2 = Vector3Add(p1, Vector3Scale(up, wall.height));
+    const Vector3 p3 = Vector3Add(p0, Vector3Scale(up, wall.height));
 
-        DrawQuad(std::array<Vector3, 4>{
-                position.x - half_of(width) - 0.1f, position.y - half_of(height), position.z + half_of(length),
-                position.x - half_of(width) - 0.1f, position.y - half_of(height), position.z - half_of(length),
-                position.x - half_of(width) - 0.1f, position.y + half_of(height), position.z - half_of(length),
-                position.x - half_of(width) - 0.1f, position.y + half_of(height), position.z + half_of(length)
-        }, color);
-    }
-    void Draw_right_wall(Vector3 position, Color color) const
-    {
+    return GetRayCollisionQuad(ray, p0, p1, p2, p3);
+}
 
-        DrawQuad(std::array<Vector3, 4>{
-                position.x + half_of(width) + 0.1f, position.y - half_of(height), position.z - half_of(length),
-                position.x + half_of(width) + 0.1f, position.y - half_of(height), position.z + half_of(length),
-                position.x + half_of(width) + 0.1f, position.y + half_of(height), position.z + half_of(length),
-                position.x + half_of(width) + 0.1f, position.y + half_of(height), position.z - half_of(length)
-        }, color);
-        
-    }
-    void Draw_attributes()
+struct Room
+{
+	///float width{ 4.0f }, length{ 5.0f }, height{ 2.5f};
+    Vector3 position{ 0.0f, 0.0f, 0.0f };
+
+    std::vector<Wall> walls{};
+    std::vector<Wall> selected_walls{};
+
+
+    void Generate_box_room(float width, float length, float height) noexcept
     {
-        //for each (auto door in front)
-        //{
-        //    Draw
-        //}
+        const Vector3 p0 = { -half_of(width), 0, -half_of(length) };
+        const Vector3 p1 = { half_of(width), 0, -half_of(length) };
+        const Vector3 p2 = { half_of(width), 0, half_of(length) };
+        const Vector3 p3 = { -half_of(width), 0, half_of(length) };
+
+        walls.clear();
+        walls.reserve(4);
+        walls.emplace_back(Wall{ p0, p1, height });
+        walls.emplace_back(Wall{ p1, p2, height });
+        walls.emplace_back(Wall{ p2, p3, height });
+        walls.emplace_back(Wall{ p3, p0, height });
+    }
+	float Total_wall_area() const noexcept
+	{
+        float area = 0.0f;
+        for (const Wall& wall : walls)
+            area += wall.Length() * wall.height;
+        return area;
+	}
+    float Selected_wall_area() const noexcept
+    {
+        float area = 0.0f;
+        for (const Wall& wall : selected_walls)
+            area += wall.Length() * wall.height;
+        return area;
+    }
+    float Floor_area() const noexcept
+    {
+        if (walls.size() < 3) return 0.0f;
+
+        std::vector<Vector2> floor_points;
+        floor_points.reserve(walls.size());
+
+        for (const Wall& wall : walls)
+        {
+            floor_points.push_back({ wall.start.x, wall.start.z }); // project onto XZ-plane
+        }
+
+        // Shoelace formula
+        float area = 0.0f;
+        size_t count = floor_points.size();
+        for (size_t i = 0; i < count; ++i)
+        {
+            const Vector2& p1 = floor_points[i];
+            const Vector2& p2 = floor_points[(i + 1) % count];
+            area += (p1.x * p2.y) - (p2.x * p1.y);
+        }
+
+        return std::abs(area) * 0.5f;
+    }
+
+    //void Resize_box_room(float width, float length, float height)
+    //{
+    //    if (walls.size() != 4) return;
+
+    //    Vector3 p0 = walls[0].start;
+    //    walls[0] = Wall{ p0, {p0.x + width, p0.y, p0.z}, height };
+    //    walls[1] = Wall{ walls[0].end, {p0.x + width, p0.y, p0.z + length}, height };
+    //    walls[2] = Wall{ walls[1].end, {p0.x, p0.y, p0.z + length}, height };
+    //    walls[3] = Wall{ walls[2].end, p0, height };
+    //}
+    void MoveWall(Wall& wall, Vector3 newCenter)
+    {
+        Vector3 center = wall.Center();
+        Vector3 delta = Vector3Subtract(newCenter, position);
+
+        wall.start = Vector3Add(wall.start, delta);
+        wall.end = Vector3Add(wall.end, delta);
     }
     
+    void Mirror_resize(const Vector3& handlePoint, const Vector3& cursorWorldPos)
+    {
+        const Vector3 normal = Vector3Normalize(Vector3Subtract(handlePoint, position));
+        const Vector3 delta = Vector3Subtract(cursorWorldPos, handlePoint);
+        //const float move_amount = Vector3DotProduct(delta, normal);
 
+        for (Wall& wall : walls)
+        {
+            const Vector3 from_center = Vector3Subtract(wall.Center(), position);
+            const float side = Vector3DotProduct(from_center, normal);
+
+            if (side > 0.0f) 
+            {
+                MoveWall(wall, Vector3Add( wall.Center(), delta));
+            }
+            else if (side < 0.0f)
+            {
+                MoveWall(wall, Vector3Add(wall.Center(), delta));
+            }
+        }
+    }
+    
+    //bool Add_door(Rectangle dimensions, ROOM_SURFACE surface)
+    //{
+    //    Attribute door{ dimensions.x, dimensions.y, Attribute::Type::Door };
+    //    const float spacing = 0.5f;
+
+    //    switch (surface)
+    //    {
+    //        case ROOM_SURFACE::Front:
+    //        {
+    //            float totalWidth = 0.0f;
+
+    //            for (const auto& o : front)
+    //            {
+    //                totalWidth += o.width + spacing;
+    //            }
+
+    //            totalWidth += dimensions.width;
+
+    //            if (totalWidth + spacing * front.size() <= width)
+    //            {
+    //                front.push_back(door);
+    //                return true;
+    //            }
+    //            return false;
+    //        }
+    //        
+
+    //        case ROOM_SURFACE::Back:
+    //        {
+    //            //back.push_back(door);
+    //        }
+
+    //        case ROOM_SURFACE::Left:
+    //        {
+    //            //left.push_back(door);
+    //        }
+
+    //        case ROOM_SURFACE::Right:
+    //        {
+    //            //right.push_back(door);
+    //        }
+    //    }
+    //    return false;
+    //}
+
+    void Draw_floor(Color color) const 
+    {
+        if (walls.size() < 3) return;
+
+        std::vector<Vector3> floor_points;
+        floor_points.reserve(walls.size());
+
+        for (const Wall& wall : walls)
+        {
+            Vector3 point = wall.start;
+            point.y = 0.0f;
+            floor_points.emplace_back(point);
+        }
+        std::reverse(floor_points.begin(), floor_points.end());
+        DrawTriangleFan3D(floor_points, color);
+
+        const char* text = TextFormat("%.1f M2", Floor_area());
+
+        rlPushMatrix();
+        rlRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+        DrawText3D(
+            GetFontDefault(),
+            text,
+            Vector3Add({ 0.0f, 0.01f, 0.0f }, GetAnchoredTextPosition3D(GetFontDefault(), text, position, 1, TextAnchor3D::Center)),
+            1.0f,
+            0.1f,
+            0.5f,
+            true,
+            WHITE
+        );
+        rlPopMatrix();
+    }
+    void Draw_walls(Color color) const
+    {
+        for (const Wall& wall : walls)
+        {
+            wall.Draw(color);
+        }
+    }
 
 };
 
@@ -344,14 +630,11 @@ class Simulation : public State
 {
 	Camera3D camera = { 0 };
 	Room room{};
-    Vector3 room_position = { 0.0f,0.0f,0.0f };
     Vector2 camera_angle = { 0.0f , 0.0f };
-    float camera_distance = 10.0f; // Avstånd från rummet
+    float camera_distance = 10.0f;
     unsigned int coats = 2;
+    Wall::Handle handle{};
 
-
-
-    ROOM_SURFACE active_handle = ROOM_SURFACE::None;
     float min_size = 1.0f;
     float max_size = 10.0f;
 
@@ -365,6 +648,8 @@ public:
 		camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
 		camera.fovy = 55.0f;
 		camera.projection = CAMERA_CUSTOM;
+
+        room.Generate_box_room( 4.0f, 5.0f, 2.5f);
 
 	};
 
@@ -387,7 +672,7 @@ public:
         camera.position.x = sinf(camera_angle.x) * camera_distance;
         camera.position.z = cosf(camera_angle.y) * camera_distance;
 
-        const Vector3 target = room_position;
+        const Vector3 target = room.position;
 
         camera.position = 
         {
@@ -397,63 +682,52 @@ public:
         };
         camera.target = target;
 
-        UpdateRoomEditing();
+        Edit();
 
 		return nullptr;
 	};
 
-    void UpdateRoomEditing()
+
+
+    void Edit()
     {
-
-
         const Vector2 mouse = GetMousePosition();
-        ROOM_SURFACE hovered = ROOM_SURFACE::None;
-
-
-        const float y = room_position.y;
-
-        std::vector<std::pair<ROOM_SURFACE, Vector3>> handles = {
-            { ROOM_SURFACE::Front, { room_position.x, y, room_position.z + half_of(room.length) } },
-            { ROOM_SURFACE::Back,  { room_position.x, y, room_position.z - half_of(room.length) } },
-            { ROOM_SURFACE::Right, { room_position.x + half_of(room.width), y, room_position.z } },
-            { ROOM_SURFACE::Left,  { room_position.x - half_of(room.width), y, room_position.z } },
-            { ROOM_SURFACE::Ceiling, { room_position.x, y + half_of(room.height), room_position.z } },
-
-        };
-
         constexpr float radius = 10.0f;
 
-        for (auto& [handle, world_position] : handles)
+        for (auto& wall : room.walls)
         {
-            const Vector2 screen_position = GetWorldToScreen(world_position, camera);
+            const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera);
             if (CheckCollisionPointCircle(mouse, screen_position, radius))
             {
-                hovered = handle;
+                handle.wall = &wall;
+                handle.hovered = true;
 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
                 {
-                    active_handle = handle;
+                    handle.selected = true;
                 }
 
-                DrawCircleV(screen_position, radius, RED); 
+
+                DrawCircleV(screen_position, radius, RED);
             }
             else
             {
+                handle = Wall::Handle{};
                 DrawCircleV(screen_position, 4, GRAY);
             }
         }
 
         if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
         {
-            active_handle = ROOM_SURFACE::None;
+            handle = Wall::Handle{};
         }
 
-        if (active_handle != ROOM_SURFACE::None && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+       if (handle.hovered && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
         {
-            
+
             const Ray ray = GetMouseRay(GetMousePosition(), camera);
-            const RayHit hit = RayIntersectPlane(ray, { 0, 1, 0 }, -room_position.y);
-            const RayHit ceiling_hit = RayIntersectPlane(ray, { 1, 0, 0 }, -room_position.x);
+            const RayHit hit = RayIntersectPlane(ray, { 0, 1, 0 }, -room.position.y);
+            const RayHit ceiling_hit = RayIntersectPlane(ray, { 1, 0, 0 }, -room.position.x);
 
 
             Vector3 hit_point = Vector3Zero();
@@ -472,71 +746,47 @@ public:
 
             }
 
-            switch (active_handle)
-            {
-            case ROOM_SURFACE::Front:
-            case ROOM_SURFACE::Back:
-            {
-                const float dist = fabsf(hit_point.z - room_position.z);
-                room.length = Clamp(dist * 2.0f, min_size, max_size);
-            } break;
-
-            case ROOM_SURFACE::Left:
-            case ROOM_SURFACE::Right:
-            {
-                const float dist = fabsf(hit_point.x - room_position.x);
-                room.width = Clamp(dist * 2.0f, min_size, max_size);
-            } break;
-
-            case ROOM_SURFACE::Ceiling:
-            {
-                room.height = Clamp(2.0f * (ceiling_hit_point.y - room_position.y), 0.01f, 6.0f);
-
-
-            } break;
-
-            default: break;
-            }
+            room.Mirror_resize(handle.wall->Center(), hit.point);
         }
 
-        if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
-        {
-            room.Add_door({ 1.0f, 2.0f }, active_handle);
-        }
     }
+        //if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
+        //{
+        //    room.Add_door({ 1.0f, 2.0f }, active_handle);
+        //}
 
 	void Render() const override
 	{
         BeginMode3D(camera);
 
-        room.Draw_floor(room_position, DARKGRAY);
-       // room.Draw_walls(room_position, PINK);
-        room.Draw_corners(room_position);
-        //room.Draw_attributes();
-
-        DrawText3D(GetFontDefault(), FormatMeasurement(room.width), { room_position.x - half_of(room.width), room_position.y - half_of(room.height), room_position.y + half_of(room.length) }, 0.4f,0.1f,1.0f, true, WHITE);
+        room.Draw_floor(DARKGRAY);
+        room.Draw_walls(WHITE);
 
 
-        rlPushMatrix();
-        rlRotatef(90.0f, 0.0f, 1.0f, 0.0f);
-        DrawText3D(GetFontDefault(), FormatMeasurement(room.length), { room_position.x - half_of(room.length), room_position.y - half_of(room.height), room_position.y + half_of(room.width) }, 0.4f, 0.1f, 1.0f, true, WHITE);
-        DrawText3D(GetFontDefault(), TextFormat("%.1f M2", room.Floor_area()), { room_position.x , room_position.y - 0.49f * room.height, room_position.y }, 0.4f, 0.1f, 1.0f, true, WHITE);
 
-        rlPopMatrix();
+        //DrawText3D(GetFontDefault(), FormatMeasurement(room.width), { room_position.x - half_of(room.width), room_position.y - half_of(room.height), room_position.y + half_of(room.length) }, 0.4f,0.1f,1.0f, true, WHITE);
 
 
-        rlPushMatrix();
-        rlRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-        DrawText3D(GetFontDefault(), FormatMeasurement(room.height), { room_position.x + half_of(room.width), room_position.y - half_of(room.length), room_position.y - half_of(room.height) }, 0.4f, 0.1f, 1.0f, true, WHITE);
-        rlPopMatrix();
+        //rlPushMatrix();
+        //rlRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+        //DrawText3D(GetFontDefault(), FormatMeasurement(room.length), { room_position.x - half_of(room.length), room_position.y - half_of(room.height), room_position.y + half_of(room.width) }, 0.4f, 0.1f, 1.0f, true, WHITE);
+        //DrawText3D(GetFontDefault(), TextFormat("%.1f M2", room.Floor_area()), { room_position.x , room_position.y - 0.49f * room.height, room_position.y }, 0.4f, 0.1f, 1.0f, true, WHITE);
+
+        //rlPopMatrix();
+
+
+        //rlPushMatrix();
+        //rlRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        //DrawText3D(GetFontDefault(), FormatMeasurement(room.height), { room_position.x + half_of(room.width), room_position.y - half_of(room.length), room_position.y - half_of(room.height) }, 0.4f, 0.1f, 1.0f, true, WHITE);
+        //rlPopMatrix();
 
 
         EndMode3D();
 
-        const float liters = Calculator::Liters_of_color(room, 8.0f, coats);
-        DrawText(TextFormat("Beräknad färgåtgång: %.1f L", liters), 20, 40, 50, RAYWHITE);
-        DrawText(TextFormat("Golvyta: %.1f M2", room.Floor_area()), 20, 80, 50, RAYWHITE);
-         DrawText(TextFormat("Strykningar: %i st", coats), 20, 120, 50, RAYWHITE);
+        //const float liters = Calculator::Liters_of_color(room, 8.0f, coats);
+        //DrawText(TextFormat("Beräknad färgåtgång: %.1f L", liters), 20, 40, 50, RAYWHITE);
+        //DrawText(TextFormat("Golvyta: %.1f M2", room.Floor_area()), 20, 80, 50, RAYWHITE);
+        // DrawText(TextFormat("Strykningar: %i st", coats), 20, 120, 50, RAYWHITE);
 
 
 	};

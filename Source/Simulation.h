@@ -5,6 +5,8 @@
 #include "Endscreen.h"
 #include <format>
 #include <array>
+#include <optional>
+
 //------------ text utils --------------------
 #include <codeanalysis\warnings.h>
 #pragma warning(push)
@@ -316,46 +318,67 @@ struct Wall
     };
 
     std::vector<size_t> corner_indices;
+    const std::vector< Vector3>* room_corners = nullptr;
     std::vector<Attribute> openings{};
 
-    bool Try_add_opening(const Attribute& opening, const std::vector<Vector3> room_corners)
-    {
-        const float spacing = 0.5f;
-        float totalWidth = 0.0f;
-        for (const auto& o : openings)
-        {
-           totalWidth += o.width + spacing;
-        }
-        totalWidth += opening.width;
-        if (totalWidth + spacing * openings.size() <= Length(room_corners))
-        {
-            openings.push_back(opening);
-            return true;
-        }
-        return false;
-    }
-    float Length(const std::vector<Vector3> room_corners) const
-    {
-        if (room_corners.size() < 2) return 0.0f;
+    Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) :
+        corner_indices(indices), 
+        room_corners(corners_ptr)
+    {}
 
-        Vector3 lowest1 = room_corners.at(corner_indices.at(0));
-        Vector3 lowest2 = room_corners.at(corner_indices.at(1));
+    const Vector3& Corner(size_t i) const 
+    {
+        if (!room_corners) {
+            throw std::runtime_error("room_corners pointer is null");
+        }
+        if (i >= corner_indices.size()) {
+            throw std::out_of_range("Corner index out of bounds in Wall");
+        }
+        size_t corner_i = corner_indices.at(i);
+        if (corner_i >= room_corners->size()) {
+            throw std::out_of_range("Wall::corner_indices contains invalid index");
+        }
+
+        return (*room_corners).at(corner_indices.at(i));
+    }
+
+    //bool Try_add_opening(const Attribute& opening)
+    //{
+    //    const float spacing = 0.5f;
+    //    float totalWidth = 0.0f;
+    //    for (const auto& o : openings)
+    //    {
+    //       totalWidth += o.width + spacing;
+    //    }
+    //    totalWidth += opening.width;
+    //    if (totalWidth + spacing * openings.size() <= Length())
+    //    {
+    //        openings.push_back(opening);
+    //        return true;
+    //    }
+    //    return false;
+    //}
+    float Length() const
+    {
+        if (room_corners->size() < 2) return 0.0f;
+
+        Vector3 lowest1 = Corner(0);
+        Vector3 lowest2 = Corner(1);
 
         if (lowest2.y < lowest1.y)
             std::swap(lowest1, lowest2);
 
-        for (size_t i : corner_indices) 
+        for (size_t i = 0; i < corner_indices.size(); i++)
         {
-            const Vector3& p = room_corners[i];
-
-            if (p.y < lowest1.y) 
+           
+            if (Corner(i).y < lowest1.y)
             {
                 lowest2 = lowest1;
-                lowest1 = p;
+                lowest1 = Corner(i);
             }
-            else if (p.y < lowest2.y) 
+            else if (Corner(i).y < lowest2.y)
             {
-                lowest2 = p;
+                lowest2 = Corner(i);
             }
         }
 
@@ -365,33 +388,30 @@ struct Wall
 
         return Vector2Distance({ lowest1.x, lowest1.z }, { lowest2.x, lowest2.z });
     }
-    float Height(const std::vector<Vector3> room_corners) const
+    float Height() const
     {
-        if (room_corners.size() < 2) return 0.0f;
+        if (room_corners->size() < 2) return 0.0f;
 
-        float min_y = room_corners.at(corner_indices.at(0)).y;
-        float max_y = room_corners.at(corner_indices.at(0)).y;
+        float min_y = Corner(0).y;
+        float max_y = Corner(0).y;
 
-        for (size_t i : corner_indices)
+        for (const auto& c : *room_corners)
         {
-            if (room_corners.at(i).y < min_y) min_y = room_corners.at(i).y;
-            if (room_corners.at(i).y > max_y) max_y = room_corners.at(i).y;
+            if (c.y < min_y) min_y = c.y;
+            if (c.y > max_y) max_y = c.y;
         }
 
         return max_y - min_y;
     }
-    float Area(const std::vector<Vector3> room_corners)
+    float Area() const
     {
-        if (corner_indices.size() < 3) return 0.0f;
+        if (room_corners->size() < 3) return 0.0f;
 
-        std::vector<Vector3> points;
-        for (size_t idx : corner_indices) {
-            points.push_back(room_corners[idx]);
-        }
+        std::vector<Vector3> points = Corners();
 
         const Vector3 u = Vector3Subtract(points[1], points[0]);         
         const Vector3 u_dir = Vector3Normalize(u);
-        const Vector3 v_dir = Vector3Normalize(Vector3CrossProduct(Normal(room_corners), u_dir));
+        const Vector3 v_dir = Vector3Normalize(Vector3CrossProduct(Normal(), u_dir));
 
         std::vector<Vector2> projected;
         const Vector3 origin = points[0];
@@ -413,71 +433,70 @@ struct Wall
 
         return std::abs(area * 0.5f);
     }
-    Vector3 Center(const std::vector<Vector3> room_corners) const
+    Vector3 Center() const
     {
-        if (corner_indices.empty()) return Vector3Zero();
+        if (room_corners->empty()) return Vector3Zero();
 
         Vector3 sum = Vector3Zero();
-        for (size_t index : corner_indices) {
-            sum = Vector3Add(sum, room_corners[index]);
+        for (size_t i = 0; i < corner_indices.size(); ++i)
+        {
+            sum = Vector3Add(sum, Corner(i)); //TODO: fix error
         }
 
         return Vector3Scale(sum, 1.0f / static_cast<float>(corner_indices.size()));
     }
-    Vector3 Normal(const std::vector<Vector3> room_corners) const
+    Vector3 Normal() const
     {
-        if (corner_indices.size() < 3) return Vector3Zero();
+        if (room_corners->size() < 3) return Vector3Zero();
 
-        std::array<Vector3, 3 > points = Corners(room_corners);
-
-        const Vector3 u = Vector3Subtract(points.at(1), points.at(0));
-        const Vector3 v = Vector3Subtract(points.at(2), points.at(0));
+        const Vector3 u = Vector3Subtract(Corner(1), Corner(0));
+        const Vector3 v = Vector3Subtract(Corner(2), Corner(0));
         return Vector3Normalize(Vector3CrossProduct(u, v));
     }
 
-    std::vector<Vector3> Corners(const std::vector<Vector3> room_corners) const
+    std::vector<Vector3> Corners() const
     {
-        if (corner_indices.size() < 3) throw;
+        if (!room_corners || room_corners->size() < 3)
+            throw std::runtime_error("Wall::Corners() called with null or too few corners.");
 
-        std::vector<Vector3> corners;
-        corners.reserve(corner_indices.size());
+        std::vector<Vector3> points;
+        points.reserve(corner_indices.size());
 
-        for (auto vec3 : room_corners)
+        for (size_t i = 0; i < corner_indices.size(); ++i)
         {
-            corners.emplace_back(vec3);
+            points.emplace_back(Corner(i));
         }
-        return corners;
+        return points;
     }
-
-    std::array<Vector3, 4> Quad(const std::vector<Vector3> room_corners) const
+    std::array<Vector3, 4> Quad() const
     {
-        if (corner_indices.size() < 4) throw;
+        if (room_corners->size() < 4) throw;
 
 
-        const Vector3 p0 = room_corners.at(corner_indices.at(0));
-        const Vector3 p1 = room_corners.at(corner_indices.at(1));
-        const Vector3 p2 = room_corners.at(corner_indices.at(2));
-        const Vector3 p3 = room_corners.at(corner_indices.at(3));
+        const Vector3 p0 = Corner(0);
+        const Vector3 p1 = Corner(1);
+        const Vector3 p2 = Corner(2);
+        const Vector3 p3 = Corner(3);
 
         return{ p0, p1, p2, p3 };
     }
-    std::array<Vector3, 3> Triangle(const std::vector<Vector3> room_corners) const
+    std::array<Vector3, 3> Triangle() const
     {
-        if (corner_indices.size() < 3) throw;
+        if (room_corners->size() < 3) throw;
 
 
-        const Vector3 p0 = room_corners.at(corner_indices.at(0));
-        const Vector3 p1 = room_corners.at(corner_indices.at(1));
-        const Vector3 p2 = room_corners.at(corner_indices.at(2));
+        const Vector3 p0 = Corner(0);
+        const Vector3 p1 = Corner(1);
+        const Vector3 p2 = Corner(2);
 
         return{ p0, p1, p2 };
     }
 
-    void Draw(const std::vector<Vector3> room_corners, const Color color) const
+    void Draw( const Color color) const
     {
         const Vector3 up = { 0.0f, 1.0f, 0.0f };
 
-        DrawPolygonLinesEx3D(Corners(room_corners), color);
+        DrawPolygonLinesEx3D(Corners(), color);
     }
     void Draw_filled(const Color color) const
     {
@@ -485,16 +504,14 @@ struct Wall
     }
 };
 
-static inline RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall) 
+static inline RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall)
 {
-    const Vector3 dir = Vector3Normalize(Vector3Subtract(wall.end, wall.start));
-    const Vector3 up = { 0.0f, 1.0f, 0.0f };
-    const Vector3 right = Vector3CrossProduct(up, dir);
+    const std::array<Vector3, 4> quad = wall.Quad();
 
-    const Vector3 p0 = wall.start;
-    const Vector3 p1 = wall.end;
-    const Vector3 p2 = Vector3Add(p1, Vector3Scale(up, wall.height));
-    const Vector3 p3 = Vector3Add(p0, Vector3Scale(up, wall.height));
+    const Vector3 p0 = quad.at(0);
+    const Vector3 p1 = quad.at(1);
+    const Vector3 p2 = quad.at(2);
+    const Vector3 p3 = quad.at(3);
 
     return GetRayCollisionQuad(ray, p0, p1, p2, p3);
 }
@@ -504,180 +521,81 @@ struct Room
 	///float width{ 4.0f }, length{ 5.0f }, height{ 2.5f};
     Vector3 position{ 0.0f, 0.0f, 0.0f };
 
+    std::vector<Vector3> corners{};
     std::vector<Wall> walls{};
     std::vector<Wall> selected_walls{};
+    size_t floor_index;
 
+    Room()
+    {
+        Generate_box_room(4.0f, 5.0f, 2.5f);
+    }
 
     void Generate_box_room(float width, float length, float height) noexcept
     {
+        corners.clear();
+
         const Vector3 p0 = { -half_of(width), 0, -half_of(length) };
         const Vector3 p1 = { half_of(width), 0, -half_of(length) };
         const Vector3 p2 = { half_of(width), 0, half_of(length) };
         const Vector3 p3 = { -half_of(width), 0, half_of(length) };
 
+        const Vector3 p4 = { -half_of(width), height , -half_of(length) };
+        const Vector3 p5 = { half_of(width),  height , -half_of(length) };
+        const Vector3 p6 = { half_of(width),  height , half_of(length) };
+        const Vector3 p7 = { -half_of(width), height , half_of(length) };
+
+        corners = { p0, p1, p2, p3, p4, p5, p6, p7 };
+
+
         walls.clear();
         walls.reserve(4);
-        walls.emplace_back(Wall{ p0, p1, height });
-        walls.emplace_back(Wall{ p1, p2, height });
-        walls.emplace_back(Wall{ p2, p3, height });
-        walls.emplace_back(Wall{ p3, p0, height });
+        walls.emplace_back(Wall({ 0, 1, 5, 4 }, &corners));
+        walls.emplace_back(Wall({ 1, 2, 6, 5 }, &corners));
+        walls.emplace_back(Wall({ 2, 3, 7, 6 }, &corners));
+        walls.emplace_back(Wall({ 3, 0, 4, 7 }, &corners));
+
+        walls.push_back(Wall({ 0, 1, 2, 3 }, &corners ));
+        floor_index = walls.size() - 1;
     }
 	float Total_wall_area() const noexcept
 	{
         float area = 0.0f;
         for (const Wall& wall : walls)
-            area += wall.Length() * wall.height;
+        {
+            area += wall.Area();
+        }
         return area;
 	}
     float Selected_wall_area() const noexcept
     {
         float area = 0.0f;
         for (const Wall& wall : selected_walls)
-            area += wall.Length() * wall.height;
+            area += wall.Area();
         return area;
     }
-    float Floor_area() const noexcept
-    {
-        if (walls.size() < 3) return 0.0f;
 
-        std::vector<Vector2> floor_points;
-        floor_points.reserve(walls.size());
-
-        for (const Wall& wall : walls)
-        {
-            floor_points.push_back({ wall.start.x, wall.start.z }); // project onto XZ-plane
-        }
-
-        // Shoelace formula
-        float area = 0.0f;
-        size_t count = floor_points.size();
-        for (size_t i = 0; i < count; ++i)
-        {
-            const Vector2& p1 = floor_points[i];
-            const Vector2& p2 = floor_points[(i + 1) % count];
-            area += (p1.x * p2.y) - (p2.x * p1.y);
-        }
-
-        return std::abs(area) * 0.5f;
-    }
-
-    //void Resize_box_room(float width, float length, float height)
+    //void MoveWall(Wall& wall, Vector3 newCenter)
     //{
-    //    if (walls.size() != 4) return;
 
-    //    Vector3 p0 = walls[0].start;
-    //    walls[0] = Wall{ p0, {p0.x + width, p0.y, p0.z}, height };
-    //    walls[1] = Wall{ walls[0].end, {p0.x + width, p0.y, p0.z + length}, height };
-    //    walls[2] = Wall{ walls[1].end, {p0.x, p0.y, p0.z + length}, height };
-    //    walls[3] = Wall{ walls[2].end, p0, height };
     //}
-    void MoveWall(Wall& wall, Vector3 newCenter)
-    {
-        Vector3 center = wall.Center();
-        Vector3 delta = Vector3Subtract(newCenter, position);
-
-        wall.start = Vector3Add(wall.start, delta);
-        wall.end = Vector3Add(wall.end, delta);
-    }
     
-    void Mirror_resize(const Vector3& handlePoint, const Vector3& cursorWorldPos)
-    {
-        const Vector3 normal = Vector3Normalize(Vector3Subtract(handlePoint, position));
-        const Vector3 delta = Vector3Subtract(cursorWorldPos, handlePoint);
-        //const float move_amount = Vector3DotProduct(delta, normal);
+    //void Mirror_resize(const Vector3& handlePoint, const Vector3& cursorWorldPos)
+    //{
 
-        for (Wall& wall : walls)
-        {
-            const Vector3 from_center = Vector3Subtract(wall.Center(), position);
-            const float side = Vector3DotProduct(from_center, normal);
-
-            if (side > 0.0f) 
-            {
-                MoveWall(wall, Vector3Add( wall.Center(), delta));
-            }
-            else if (side < 0.0f)
-            {
-                MoveWall(wall, Vector3Add(wall.Center(), delta));
-            }
-        }
-    }
+    //}
     
     //bool Add_door(Rectangle dimensions, ROOM_SURFACE surface)
     //{
     //    Attribute door{ dimensions.x, dimensions.y, Attribute::Type::Door };
     //    const float spacing = 0.5f;
-
-    //    switch (surface)
-    //    {
-    //        case ROOM_SURFACE::Front:
-    //        {
-    //            float totalWidth = 0.0f;
-
-    //            for (const auto& o : front)
-    //            {
-    //                totalWidth += o.width + spacing;
-    //            }
-
-    //            totalWidth += dimensions.width;
-
-    //            if (totalWidth + spacing * front.size() <= width)
-    //            {
-    //                front.push_back(door);
-    //                return true;
-    //            }
-    //            return false;
-    //        }
-    //        
-
-    //        case ROOM_SURFACE::Back:
-    //        {
-    //            //back.push_back(door);
-    //        }
-
-    //        case ROOM_SURFACE::Left:
-    //        {
-    //            //left.push_back(door);
-    //        }
-
-    //        case ROOM_SURFACE::Right:
-    //        {
-    //            //right.push_back(door);
-    //        }
-    //    }
-    //    return false;
     //}
 
     void Draw_floor(Color color) const 
     {
         if (walls.size() < 3) return;
 
-        std::vector<Vector3> floor_points;
-        floor_points.reserve(walls.size());
-
-        for (const Wall& wall : walls)
-        {
-            Vector3 point = wall.start;
-            point.y = 0.0f;
-            floor_points.emplace_back(point);
-        }
-        std::reverse(floor_points.begin(), floor_points.end());
-        DrawTriangleFan3D(floor_points, color);
-
-        const char* text = TextFormat("%.1f M2", Floor_area());
-
-        rlPushMatrix();
-        rlRotatef(90.0f, 0.0f, 1.0f, 0.0f);
-        DrawText3D(
-            GetFontDefault(),
-            text,
-            Vector3Add({ 0.0f, 0.01f, 0.0f }, GetAnchoredTextPosition3D(GetFontDefault(), text, position, 1, TextAnchor3D::Center)),
-            1.0f,
-            0.1f,
-            0.5f,
-            true,
-            WHITE
-        );
-        rlPopMatrix();
+        walls.at(floor_index).Draw_filled(color);
     }
     void Draw_walls(Color color) const
     {
@@ -701,7 +619,7 @@ public:
 class Simulation : public State
 {
 	Camera3D camera = { 0 };
-	Room room{};
+    Room room{};
     Vector2 camera_angle = { 0.0f , 0.0f };
     float camera_distance = 10.0f;
     unsigned int coats = 2;
@@ -818,7 +736,7 @@ public:
 
             }
 
-            room.Mirror_resize(handle.wall->Center(), hit.point);
+            //room.Mirror_resize(handle.wall->Center(), hit.point);
         }
 
     }

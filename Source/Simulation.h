@@ -440,7 +440,7 @@ struct Wall
         Vector3 sum = Vector3Zero();
         for (size_t i = 0; i < corner_indices.size(); ++i)
         {
-            sum = Vector3Add(sum, Corner(i)); //TODO: fix error
+            sum = Vector3Add(sum, Corner(i));
         }
 
         return Vector3Scale(sum, 1.0f / static_cast<float>(corner_indices.size()));
@@ -580,10 +580,31 @@ struct Room
 
     //}
     
-    //void Mirror_resize(const Vector3& handlePoint, const Vector3& cursorWorldPos)
-    //{
+    void Mirror_resize( Wall& dragged_wall, const Vector3& drag_point)
+    {
+        if (!dragged_wall.room_corners) return;
 
-    //}
+        const Vector3 wall_center = dragged_wall.Center();
+        const Vector3 direction = dragged_wall.Normal(); 
+        const Vector3 delta = Vector3Subtract(drag_point, wall_center);
+        const float drag_magnitude = 0.05f * Vector3DotProduct(delta, direction);
+        const Vector3 move_delta = Vector3Scale(direction, drag_magnitude);
+
+        for (Vector3& corner : corners)
+        {
+            const Vector3 to_corner = Vector3Subtract(corner, position);
+            const float side = Vector3DotProduct(to_corner, direction);
+
+            if (side > 0.0f)
+            {
+                corner = Vector3Add(corner, move_delta);
+            }
+            else if (side < 0.0f)
+            {
+                corner = Vector3Subtract(corner, move_delta);
+            }
+        }
+    }
     
     //bool Add_door(Rectangle dimensions, ROOM_SURFACE surface)
     //{
@@ -677,12 +698,13 @@ public:
 		return nullptr;
 	};
 
-
-
     void Edit()
     {
         const Vector2 mouse = GetMousePosition();
         constexpr float radius = 10.0f;
+
+        handle = Wall::Handle{};
+
 
         for (auto& wall : room.walls)
         {
@@ -694,51 +716,31 @@ public:
 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
                 {
-                    handle.selected = true;
+                     handle.selected = true;
                 }
 
-
-                DrawCircleV(screen_position, radius, RED);
+                DrawCircleV(screen_position, radius, WHITE);                
             }
             else
             {
-                handle = Wall::Handle{};
                 DrawCircleV(screen_position, 4, GRAY);
+
             }
         }
 
         if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
         {
             handle = Wall::Handle{};
+            
         }
 
-       if (handle.hovered && IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-        {
+       if (handle.selected)
+       {
+           const Ray ray = GetMouseRay(GetMousePosition(), camera);
+           const RayHit hit = RayIntersectPlane(ray, { 0, 1, 0 }, -room.position.y);
 
-            const Ray ray = GetMouseRay(GetMousePosition(), camera);
-            const RayHit hit = RayIntersectPlane(ray, { 0, 1, 0 }, -room.position.y);
-            const RayHit ceiling_hit = RayIntersectPlane(ray, { 1, 0, 0 }, -room.position.x);
-
-
-            Vector3 hit_point = Vector3Zero();
-            Vector3 ceiling_hit_point = Vector3Zero();
-
-
-            if (hit.hit)
-            {
-                hit_point = hit.point;
-
-            }
-
-            if (ceiling_hit.hit)
-            {
-                ceiling_hit_point = ceiling_hit.point;
-
-            }
-
-            //room.Mirror_resize(handle.wall->Center(), hit.point);
-        }
-
+           room.Mirror_resize(*handle.wall, hit.point);
+       }
     }
         //if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
         //{

@@ -1,4 +1,4 @@
-#pragma once
+Ôªø#pragma once
 
 #include "State.h"
 #include "ColorUtils.h"
@@ -35,6 +35,115 @@ RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance)
     }
     return result;
 }
+Vector3 RotationMatrixToEuler(Matrix m)
+{
+    Vector3 euler;
+
+    // Check for gimbal lock
+    if (fabsf(m.m2) < 0.999f) {
+        euler.y = asinf(-m.m2); // pitch (Y)
+        euler.x = atan2f(m.m6, m.m10); // yaw (X)
+        euler.z = atan2f(m.m1, m.m0);  // roll (Z)
+    }
+    else {
+        // Gimbal lock fallback
+        euler.y = asinf(-m.m2); // pitch (Y)
+        euler.x = atan2f(-m.m9, m.m5); // yaw (X)
+        euler.z = 0.0f;
+    }
+
+    // Convert to degrees
+    euler.x = RAD2DEG * euler.x;
+    euler.y = RAD2DEG * euler.y;
+    euler.z = RAD2DEG * euler.z;
+
+    return euler;
+}
+void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll)
+{
+    if (fabsf(mat.m6) < 0.999f)  // No gimbal lock
+    {
+        pitch = asinf(-mat.m6);                    // -sin(pitch)
+        roll = atan2f(mat.m4, mat.m5);             // atan2(xz / yy)
+        yaw = atan2f(mat.m2, mat.m10);             // atan2(zy / zz)
+    }
+    else
+    {
+        // Gimbal lock
+        pitch = asinf(-mat.m6);
+        roll = 0;
+        yaw = atan2f(-mat.m8, mat.m0);
+    }
+
+    // Convert to degrees for rlRotatef
+    yaw = RAD2DEG * yaw;
+    pitch = RAD2DEG * pitch;
+    roll = RAD2DEG * roll;
+}
+
+#include <cmath>
+
+
+//void BuildBasis(Vector3 forward, Vector3 up, Vector3& right_out, Vector3& up_out, Vector3& forward_out)
+//{
+//    forward_out = Vector3Normalize(forward);
+//    right_out = Vector3Normalize(Vector3CrossProduct(up, forward_out));
+//    up_out = Vector3CrossProduct(forward_out, right_out);
+//}
+//
+//void ComputeFullRotation(Vector3 old_forward, Vector3 old_up, Vector3 new_forward, Vector3 new_up,
+//    float& out_angle_deg, Vector3& out_axis)
+//{
+//    // Build full basis for both orientations
+//    Vector3 old_right, old_up_final, old_forward_final;
+//    BuildBasis(old_forward, old_up, old_right, old_up_final, old_forward_final);
+//
+//    Vector3 new_right, new_up_final, new_forward_final;
+//    BuildBasis(new_forward, new_up, new_right, new_up_final, new_forward_final);
+//
+//    // Rotation matrix from basis vectors (columns)
+//    float R_old[3][3] = {
+//        { old_right.x, old_up_final.x, old_forward_final.x },
+//        { old_right.y, old_up_final.y, old_forward_final.y },
+//        { old_right.z, old_up_final.z, old_forward_final.z }
+//    };
+//
+//    float R_new[3][3] = {
+//        { new_right.x, new_up_final.x, new_forward_final.x },
+//        { new_right.y, new_up_final.y, new_forward_final.y },
+//        { new_right.z, new_up_final.z, new_forward_final.z }
+//    };
+//
+//    // Compute delta rotation: R_delta = R_new * transpose(R_old)
+//    float R_delta[3][3];
+//    for (int i = 0; i < 3; i++) {
+//        for (int j = 0; j < 3; j++) {
+//            R_delta[i][j] = 0.0f;
+//            for (int k = 0; k < 3; k++) {
+//                R_delta[i][j] += R_new[i][k] * R_old[j][k]; // Transpose of R_old
+//            }
+//        }
+//    }
+//
+//    // Compute angle from trace
+//    float trace = R_delta[0][0] + R_delta[1][1] + R_delta[2][2];
+//    float angle_rad = acosf(fmaxf(fminf((trace - 1.0f) * 0.5f, 1.0f), -1.0f)); // Clamp
+//
+//    if (angle_rad < 1e-5f) {
+//        out_angle_deg = 0.0f;
+//        out_axis = { 1.0f, 0.0f, 0.0f }; // arbitrary
+//        return;
+//    }
+//
+//    // Axis from skew-symmetric part
+//    out_axis.x = (R_delta[2][1] - R_delta[1][2]) / (2.0f * sinf(angle_rad));
+//    out_axis.y = (R_delta[0][2] - R_delta[2][0]) / (2.0f * sinf(angle_rad));
+//    out_axis.z = (R_delta[1][0] - R_delta[0][1]) / (2.0f * sinf(angle_rad));
+//
+//    out_axis = Vector3Normalize(out_axis);
+//    out_angle_deg = angle_rad * (180.0f / 3.14159265f);
+//}
+
 
 enum class TextAnchor3D
 {
@@ -49,7 +158,7 @@ enum class TextAnchor3D
     MiddleRight
 };
 
-static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint) 
+static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint)
 {
     // Character index position in sprite font
     // NOTE: In case a codepoint is not available in the font, index returned points to '?'
@@ -88,6 +197,7 @@ static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 positio
         rlPushMatrix();
         rlTranslatef(position.x, position.y, position.z);
 
+
         rlBegin(RL_QUADS);
         rlColor4ub(tint.r, tint.g, tint.b, tint.a);
 
@@ -113,7 +223,7 @@ static inline void DrawTextCodepoint3D(Font font, int codepoint, Vector3 positio
         rlSetTexture(0);
     }
 }
-static inline void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, float lineSpacing, bool backface, Color tint)
+static inline void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, float lineSpacing, bool backface, Color tint/*, const Matrix& transform*/)
 {
     int length = TextLength(text);          // Total length in bytes of the text, scanned by codepoints in loop
 
@@ -154,7 +264,7 @@ static inline void DrawText3D(Font font, const char* text, Vector3 position, flo
         i += codepointByteCount;   // Move text bytes counter to next codepoint
     }
 }
-Vector3 GetAnchoredTextPosition3D(Font font, const char* text, Vector3 center, float fontSize, TextAnchor3D anchor)
+Vector3 GetAnchoredTextOffset3D(Font font, const char* text, float fontSize, TextAnchor3D anchor)
 {
     const int length = TextLength(text);
     float scale = fontSize / (float)font.baseSize;
@@ -204,9 +314,48 @@ Vector3 GetAnchoredTextPosition3D(Font font, const char* text, Vector3 center, f
         break;
     }
 
-    return Vector3Add(center, offset);
+    return offset;
 }
+void DrawAnchoredText3D(Font font, const char* text, Vector3 position,
+    float fontSize, float fontSpacing, bool backface, Color tint,
+    TextAnchor3D anchor, const Matrix& rotation)
+{
+    const Vector3 default_text_forward = { 0.0f, 1.0f, 0.0f };
+    const Vector3 default_text_up = { 0.0f, 0.0f, -1.0f };
+    const Vector3 default_text_right = Vector3Normalize(Vector3CrossProduct(default_text_up, default_text_forward));
 
+    const Matrix default_rotation =
+    {
+        default_text_right.x, default_text_up.x, default_text_forward.x, 0,
+        default_text_right.y, default_text_up.y, default_text_forward.y, 0,
+        default_text_right.z, default_text_up.z, default_text_forward.z, 0,
+        0, 0, 0, 1
+    };
+
+    float yaw, pitch, roll;
+    MatrixToEulerZYX(rotation, yaw, pitch, roll);
+
+    rlPushMatrix();
+    rlTranslatef(position.x, position.y, position.z);
+
+    if (!Vector3Equals({ rotation.m8, rotation.m9,rotation.m10 }, { 0.0f,1.0f,0.0f }))
+    {
+        roll += 90.0f;     // TODO: quick fix
+    }
+    rlRotatef(roll, 1, 0, 0);   // X 
+    rlRotatef(pitch, 0, 1, 0);  // Y
+    rlRotatef(yaw, 0, 0, 1);    // Z 
+
+
+    Vector3 offset = GetAnchoredTextOffset3D(font, text, fontSize, anchor);
+    DrawText3D(font, text, offset, fontSize, fontSpacing, fontSize, backface, tint);
+
+    //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_right, 0.5f)), RED);
+    //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_up, 0.5f)), BLUE);
+    //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_forward, 0.5f)), GREEN);
+
+    rlPopMatrix();
+}
 
 static inline void DrawQuad(std::array<Vector3, 4> corners, Color color)
 {
@@ -315,6 +464,7 @@ struct Wall
         bool hovered{ false };
         bool selected{ false };
         Wall* wall = nullptr;
+        Vector3 wall_center_start = Vector3Zero();  // wall center at click time
     };
 
     std::vector<size_t> corner_indices;
@@ -334,30 +484,13 @@ struct Wall
         if (i >= corner_indices.size()) {
             throw std::out_of_range("Corner index out of bounds in Wall");
         }
-        size_t corner_i = corner_indices.at(i);
+        const size_t corner_i = corner_indices.at(i);
         if (corner_i >= room_corners->size()) {
             throw std::out_of_range("Wall::corner_indices contains invalid index");
         }
 
         return (*room_corners).at(corner_indices.at(i));
     }
-
-    //bool Try_add_opening(const Attribute& opening)
-    //{
-    //    const float spacing = 0.5f;
-    //    float totalWidth = 0.0f;
-    //    for (const auto& o : openings)
-    //    {
-    //       totalWidth += o.width + spacing;
-    //    }
-    //    totalWidth += opening.width;
-    //    if (totalWidth + spacing * openings.size() <= Length())
-    //    {
-    //        openings.push_back(opening);
-    //        return true;
-    //    }
-    //    return false;
-    //}
     float Length() const
     {
         if (room_corners->size() < 2) return 0.0f;
@@ -416,7 +549,8 @@ struct Wall
         std::vector<Vector2> projected;
         const Vector3 origin = points[0];
 
-        for (const Vector3& p : points) {
+        for (const Vector3& p : points) 
+        {
             const Vector3 rel = Vector3Subtract(p, origin);
             const float x = Vector3DotProduct(rel, u_dir);
             const float y = Vector3DotProduct(rel, v_dir);
@@ -425,7 +559,8 @@ struct Wall
 
         float area = 0.0f;
         const size_t n = projected.size();
-        for (size_t i = 0; i < n; ++i) {
+        for (size_t i = 0; i < n; ++i) 
+        {
             const Vector2& a = projected[i];
             const Vector2& b = projected[(i + 1) % n];
             area += (a.x * b.y - b.x * a.y);
@@ -453,7 +588,6 @@ struct Wall
         const Vector3 v = Vector3Subtract(Corner(2), Corner(0));
         return Vector3Normalize(Vector3CrossProduct(u, v));
     }
-
     std::vector<Vector3> Corners() const
     {
         if (!room_corners || room_corners->size() < 3)
@@ -491,12 +625,41 @@ struct Wall
 
         return{ p0, p1, p2 };
     }
-
     void Draw( const Color color) const
     {
-        const Vector3 up = { 0.0f, 1.0f, 0.0f };
-
         DrawPolygonLinesEx3D(Corners(), color);
+
+        const Vector3 forward = Normal();
+        const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+        const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
+        const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
+
+        //DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(right, 1.0f)), RED);
+        //DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(up, 1.0f)), BLUE);
+        //DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(forward, 1.0f)), GREEN);
+
+        const Matrix rotation = 
+        {
+            right.x, up.x, forward.x, 0,
+            right.y, up.y, forward.y, 0,
+            right.z, up.z, forward.z, 0,
+            0,       0,    0,         1
+        };
+
+        const Vector3 local_pos = { 0.0f, 0.01f, 0.0f }; // on wall, slightly above center, facing out
+        const Vector3 world_pos = Vector3Add(Center(), local_pos); 
+
+        DrawAnchoredText3D
+        (
+            GetFontDefault(),
+            TextFormat("%.1f M2", Area()),
+            world_pos,
+            0.4f, 0.1f,
+            false,
+            WHITE,
+            TextAnchor3D::Center,
+            rotation
+        );
     }
     void Draw_filled(const Color color) const
     {
@@ -555,7 +718,7 @@ struct Room
         walls.emplace_back(Wall({ 2, 3, 7, 6 }, &corners));
         walls.emplace_back(Wall({ 3, 0, 4, 7 }, &corners));
 
-        walls.push_back(Wall({ 0, 1, 2, 3 }, &corners ));
+        walls.push_back(Wall({ 3, 2, 1, 0 }, &corners ));
         floor_index = walls.size() - 1;
     }
 	float Total_wall_area() const noexcept
@@ -574,21 +737,13 @@ struct Room
             area += wall.Area();
         return area;
     }
-
-    //void MoveWall(Wall& wall, Vector3 newCenter)
-    //{
-
-    //}
     
-    void Mirror_resize( Wall& dragged_wall, const Vector3& drag_point)
+
+    void Mirror_resize(Wall& dragged_wall, const Vector3& move_delta)
     {
         if (!dragged_wall.room_corners) return;
 
-        const Vector3 wall_center = dragged_wall.Center();
-        const Vector3 direction = dragged_wall.Normal(); 
-        const Vector3 delta = Vector3Subtract(drag_point, wall_center);
-        const float drag_magnitude = 0.05f * Vector3DotProduct(delta, direction);
-        const Vector3 move_delta = Vector3Scale(direction, drag_magnitude);
+        const Vector3 direction = dragged_wall.Normal();
 
         for (Vector3& corner : corners)
         {
@@ -596,15 +751,12 @@ struct Room
             const float side = Vector3DotProduct(to_corner, direction);
 
             if (side > 0.0f)
-            {
                 corner = Vector3Add(corner, move_delta);
-            }
             else if (side < 0.0f)
-            {
                 corner = Vector3Subtract(corner, move_delta);
-            }
         }
     }
+    
     
     //bool Add_door(Rectangle dimensions, ROOM_SURFACE surface)
     //{
@@ -620,9 +772,11 @@ struct Room
     }
     void Draw_walls(Color color) const
     {
+
         for (const Wall& wall : walls)
         {
             wall.Draw(color);
+
         }
     }
 
@@ -703,49 +857,74 @@ public:
         const Vector2 mouse = GetMousePosition();
         constexpr float radius = 10.0f;
 
-        handle = Wall::Handle{};
+        Wall* hovered_wall = nullptr;
+        float closest_distance_sq = radius * radius;
 
-
+        // Hover detection
         for (auto& wall : room.walls)
         {
             const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera);
-            if (CheckCollisionPointCircle(mouse, screen_position, radius))
+            const float dist_sq = Vector2DistanceSqr(mouse, screen_position);
+
+            if (dist_sq < closest_distance_sq)
             {
-                handle.wall = &wall;
-                handle.hovered = true;
-
-                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-                {
-                     handle.selected = true;
-                }
-
-                DrawCircleV(screen_position, radius, WHITE);                
+                closest_distance_sq = dist_sq;
+                hovered_wall = &wall;
             }
-            else
-            {
-                DrawCircleV(screen_position, 4, GRAY);
 
-            }
+            DrawCircleV(screen_position, hovered_wall == &wall ? radius : 4.0f, hovered_wall == &wall ? WHITE : GRAY);
         }
 
-        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+        if (hovered_wall) 
+        {
+            handle.hovered = hovered_wall;
+            handle.wall = hovered_wall;
+        }
+
+        // Mouse release ends drag
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) 
         {
             handle = Wall::Handle{};
-            
         }
 
-       if (handle.selected)
-       {
-           const Ray ray = GetMouseRay(GetMousePosition(), camera);
-           const RayHit hit = RayIntersectPlane(ray, { 0, 1, 0 }, -room.position.y);
+        if (!handle.wall) return;
 
-           room.Mirror_resize(*handle.wall, hit.point);
-       }
+        const Vector3 normal = handle.wall->Normal();
+
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) 
+        {
+           const Ray ray = GetMouseRay(mouse, camera);
+           const RayHit hit = RayIntersectPlane(ray, normal, -Vector3DotProduct(normal, handle.wall->Center()));
+
+            if (hit.hit) 
+            {
+                handle.selected = true;
+                handle.wall_center_start = handle.wall->Center();
+            }
+        }
+
+        if (handle.selected) 
+        {
+            const Ray ray = GetMouseRay(mouse, camera);
+            const RayHit hit = RayIntersectPlane(ray, normal, -Vector3DotProduct(normal, handle.wall->Center()));
+
+            if (hit.hit) 
+            {
+                DrawLine3D(handle.wall_center_start, Vector3Add(handle.wall_center_start, Vector3Scale(normal, 10.0f)), RED);
+
+                const Vector3 delta = Vector3Subtract(hit.point, handle.wall_center_start);
+                const float move_amount = Vector3DotProduct(delta, normal);
+                const Vector3 move_delta = Vector3Scale(normal, move_amount);
+
+                room.Mirror_resize(*handle.wall, move_delta);
+            }
+        }
     }
-        //if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
-        //{
-        //    room.Add_door({ 1.0f, 2.0f }, active_handle);
-        //}
+
+    //if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
+    //{
+    //    room.Add_door({ 1.0f, 2.0f }, active_handle);
+    //}
 
 	void Render() const override
 	{
@@ -755,6 +934,11 @@ public:
         room.Draw_walls(WHITE);
 
 
+        const Vector3 origo = { 0.0f, 5.0f, 0.0f };
+
+        DrawLine3D(origo, Vector3Add(origo, Vector3Scale({ 1.0f, 0.0f, 0.0f }, 1.0f)), RED);
+        DrawLine3D(origo, Vector3Add(origo, Vector3Scale({ 0.0f, 1.0f, 0.0f }, 1.0f)), BLUE);
+        DrawLine3D(origo, Vector3Add(origo, Vector3Scale({ 0.0f, 0.0f, 1.0f }, 1.0f)), GREEN);
 
         //DrawText3D(GetFontDefault(), FormatMeasurement(room.width), { room_position.x - half_of(room.width), room_position.y - half_of(room.height), room_position.y + half_of(room.length) }, 0.4f,0.1f,1.0f, true, WHITE);
 
@@ -776,7 +960,7 @@ public:
         EndMode3D();
 
         //const float liters = Calculator::Liters_of_color(room, 8.0f, coats);
-        //DrawText(TextFormat("Ber‰knad f‰rgÂtgÂng: %.1f L", liters), 20, 40, 50, RAYWHITE);
+        //DrawText(TextFormat("Ber√§knad f√§rg√•tg√•ng: %.1f L", liters), 20, 40, 50, RAYWHITE);
         //DrawText(TextFormat("Golvyta: %.1f M2", room.Floor_area()), 20, 80, 50, RAYWHITE);
         // DrawText(TextFormat("Strykningar: %i st", coats), 20, 120, 50, RAYWHITE);
 

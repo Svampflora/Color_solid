@@ -83,68 +83,6 @@ void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll)
 
 #include <cmath>
 
-
-//void BuildBasis(Vector3 forward, Vector3 up, Vector3& right_out, Vector3& up_out, Vector3& forward_out)
-//{
-//    forward_out = Vector3Normalize(forward);
-//    right_out = Vector3Normalize(Vector3CrossProduct(up, forward_out));
-//    up_out = Vector3CrossProduct(forward_out, right_out);
-//}
-//
-//void ComputeFullRotation(Vector3 old_forward, Vector3 old_up, Vector3 new_forward, Vector3 new_up,
-//    float& out_angle_deg, Vector3& out_axis)
-//{
-//    // Build full basis for both orientations
-//    Vector3 old_right, old_up_final, old_forward_final;
-//    BuildBasis(old_forward, old_up, old_right, old_up_final, old_forward_final);
-//
-//    Vector3 new_right, new_up_final, new_forward_final;
-//    BuildBasis(new_forward, new_up, new_right, new_up_final, new_forward_final);
-//
-//    // Rotation matrix from basis vectors (columns)
-//    float R_old[3][3] = {
-//        { old_right.x, old_up_final.x, old_forward_final.x },
-//        { old_right.y, old_up_final.y, old_forward_final.y },
-//        { old_right.z, old_up_final.z, old_forward_final.z }
-//    };
-//
-//    float R_new[3][3] = {
-//        { new_right.x, new_up_final.x, new_forward_final.x },
-//        { new_right.y, new_up_final.y, new_forward_final.y },
-//        { new_right.z, new_up_final.z, new_forward_final.z }
-//    };
-//
-//    // Compute delta rotation: R_delta = R_new * transpose(R_old)
-//    float R_delta[3][3];
-//    for (int i = 0; i < 3; i++) {
-//        for (int j = 0; j < 3; j++) {
-//            R_delta[i][j] = 0.0f;
-//            for (int k = 0; k < 3; k++) {
-//                R_delta[i][j] += R_new[i][k] * R_old[j][k]; // Transpose of R_old
-//            }
-//        }
-//    }
-//
-//    // Compute angle from trace
-//    float trace = R_delta[0][0] + R_delta[1][1] + R_delta[2][2];
-//    float angle_rad = acosf(fmaxf(fminf((trace - 1.0f) * 0.5f, 1.0f), -1.0f)); // Clamp
-//
-//    if (angle_rad < 1e-5f) {
-//        out_angle_deg = 0.0f;
-//        out_axis = { 1.0f, 0.0f, 0.0f }; // arbitrary
-//        return;
-//    }
-//
-//    // Axis from skew-symmetric part
-//    out_axis.x = (R_delta[2][1] - R_delta[1][2]) / (2.0f * sinf(angle_rad));
-//    out_axis.y = (R_delta[0][2] - R_delta[2][0]) / (2.0f * sinf(angle_rad));
-//    out_axis.z = (R_delta[1][0] - R_delta[0][1]) / (2.0f * sinf(angle_rad));
-//
-//    out_axis = Vector3Normalize(out_axis);
-//    out_angle_deg = angle_rad * (180.0f / 3.14159265f);
-//}
-
-
 enum class TextAnchor3D
 {
     Center,
@@ -464,7 +402,7 @@ struct Wall
         bool hovered{ false };
         bool selected{ false };
         Wall* wall = nullptr;
-        Vector3 wall_center_start = Vector3Zero();  // wall center at click time
+        Vector3 wall_center_start{ 0.0f, 0.0f, 0.0f };  // wall center at click time
     };
 
     std::vector<size_t> corner_indices;
@@ -890,11 +828,11 @@ public:
         if (!handle.wall) return;
 
         const Vector3 normal = handle.wall->Normal();
+        const Ray ray = GetMouseRay(mouse, camera);
+        const RayHit hit = RayIntersectPlane(ray, normal, Vector3DotProduct(normal, handle.wall->Center()));
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) 
         {
-           const Ray ray = GetMouseRay(mouse, camera);
-           const RayHit hit = RayIntersectPlane(ray, normal, -Vector3DotProduct(normal, handle.wall->Center()));
 
             if (hit.hit) 
             {
@@ -905,19 +843,15 @@ public:
 
         if (handle.selected) 
         {
-            const Ray ray = GetMouseRay(mouse, camera);
-            const RayHit hit = RayIntersectPlane(ray, normal, -Vector3DotProduct(normal, handle.wall->Center()));
+            const Vector2 screen_position = GetWorldToScreen(handle.wall->Center(), camera);
+            DrawCircleV(screen_position, radius, WHITE);
 
-            if (hit.hit) 
-            {
-                DrawLine3D(handle.wall_center_start, Vector3Add(handle.wall_center_start, Vector3Scale(normal, 10.0f)), RED);
+            const Vector3 delta = Vector3Subtract(hit.point, handle.wall_center_start); //delta should be calculated from current pos rather than handle.wall_center_start
+            const float move_amount = Vector3DotProduct(delta, normal);
+            const Vector3 move_delta = Vector3Scale(normal, move_amount);
 
-                const Vector3 delta = Vector3Subtract(hit.point, handle.wall_center_start);
-                const float move_amount = Vector3DotProduct(delta, normal);
-                const Vector3 move_delta = Vector3Scale(normal, move_amount);
-
-                room.Mirror_resize(*handle.wall, move_delta);
-            }
+            room.Mirror_resize(*handle.wall, move_delta); //move_delta == 0; useless
+            
         }
     }
 

@@ -81,6 +81,34 @@ void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll)
     roll = RAD2DEG * roll;
 }
 
+//static Vector3 ClosestPointOnLineToRay(const Ray& ray, const Vector3& linePoint, const Vector3& lineDir)
+//{
+//    Vector3 u = Vector3Normalize(ray.direction); // ray direction
+//    Vector3 v = Vector3Normalize(lineDir);       // line direction (the wall normal)
+//    Vector3 w0 = Vector3Subtract(ray.position, linePoint);
+//
+//    float a = Vector3DotProduct(u, u); // ~1
+//    float b = Vector3DotProduct(u, v);
+//    float c = Vector3DotProduct(v, v); // ~1
+//    float d = Vector3DotProduct(u, w0);
+//    float e = Vector3DotProduct(v, w0);
+//
+//    float denom = a * c - b * b;
+//    float tc; // parameter on the line (linePoint + tc * v)
+//
+//    if (fabsf(denom) < 1e-6f) {
+//        // Almost parallel: choose tc so the line point is the projection of ray origin onto the line:
+//        tc = e / c;
+//    }
+//    else {
+//        // general case
+//        // sc = (b*e - c*d) / denom;  // parameter on the ray (unused here)
+//        tc = (a * e - b * d) / denom;
+//    }
+//
+//    return Vector3Add(linePoint, Vector3Scale(v, tc));
+//}
+
 #include <cmath>
 
 enum class TextAnchor3D
@@ -402,7 +430,10 @@ struct Wall
         bool hovered{ false };
         bool selected{ false };
         Wall* wall = nullptr;
-        Vector3 wall_center_start{ 0.0f, 0.0f, 0.0f };  // wall center at click time
+        Vector3 last_hit{ 0.0f, 0.0f, 0.0f }; 
+        
+        Vector3 start_center{ 0.0f, 0.0f, 0.0f };
+        float start_t{ 0.0f };
     };
 
     std::vector<size_t> corner_indices;
@@ -619,9 +650,7 @@ static inline RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall)
 
 struct Room
 {
-	///float width{ 4.0f }, length{ 5.0f }, height{ 2.5f};
     Vector3 position{ 0.0f, 0.0f, 0.0f };
-
     std::vector<Vector3> corners{};
     std::vector<Wall> walls{};
     std::vector<Wall> selected_walls{};
@@ -795,10 +824,10 @@ public:
         const Vector2 mouse = GetMousePosition();
         constexpr float radius = 10.0f;
 
+        // 1. Hover detection
         Wall* hovered_wall = nullptr;
         float closest_distance_sq = radius * radius;
 
-        // Hover detection
         for (auto& wall : room.walls)
         {
             const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera);
@@ -810,50 +839,119 @@ public:
                 hovered_wall = &wall;
             }
 
-            DrawCircleV(screen_position, hovered_wall == &wall ? radius : 4.0f, hovered_wall == &wall ? WHITE : GRAY);
+            DrawCircleV(screen_position, hovered_wall == &wall ? radius : 4.0f,
+                hovered_wall == &wall ? WHITE : GRAY);
         }
 
-        if (hovered_wall) 
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_wall)
         {
-            handle.hovered = hovered_wall;
             handle.wall = hovered_wall;
+            handle.selected = true;
+            handle.last_hit = hovered_wall->Center();
         }
 
-        // Mouse release ends drag
-        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) 
+        if (handle.selected && handle.wall)
         {
-            handle = Wall::Handle{};
-        }
+            const Vector3 wall_normal = handle.wall->Normal();
+            const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+            const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(world_up, wall_normal));
+            const Vector3 perp_plane_normal = sideways;
+            const Ray ray = GetMouseRay(mouse, camera);
+            const float plane_d = Vector3DotProduct(perp_plane_normal, handle.wall->Center());
+            const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
 
-        if (!handle.wall) return;
-
-        const Vector3 normal = handle.wall->Normal();
-        const Ray ray = GetMouseRay(mouse, camera);
-        const RayHit hit = RayIntersectPlane(ray, normal, Vector3DotProduct(normal, handle.wall->Center()));
-
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) 
-        {
-
-            if (hit.hit) 
+            if (hit.hit)
             {
-                handle.selected = true;
-                handle.wall_center_start = handle.wall->Center();
+                const Vector3 center = handle.wall->Center();
+                const Vector3 diff = Vector3Subtract(hit.point, center);
+                const float t = Vector3DotProduct(diff, wall_normal); // distance along axis
+                const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, t));
+                const Vector3 move_delta = Vector3Subtract(line_position, handle.last_hit);
+                handle.last_hit = line_position;
+
+                room.Mirror_resize(*handle.wall, Vector3Negate(move_delta));
             }
         }
 
-        if (handle.selected) 
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
         {
-            const Vector2 screen_position = GetWorldToScreen(handle.wall->Center(), camera);
-            DrawCircleV(screen_position, radius, WHITE);
-
-            const Vector3 delta = Vector3Subtract(hit.point, handle.wall_center_start); //delta should be calculated from current pos rather than handle.wall_center_start
-            const float move_amount = Vector3DotProduct(delta, normal);
-            const Vector3 move_delta = Vector3Scale(normal, move_amount);
-
-            room.Mirror_resize(*handle.wall, move_delta); //move_delta == 0; useless
-            
+            handle = Wall::Handle{};
         }
     }
+
+    //void Edit()
+    //{
+    //    const Vector2 mouse = GetMousePosition();
+    //    constexpr float radius = 10.0f;
+
+    //    // Hover detection
+    //    Wall* hovered_wall = nullptr;
+    //    float closest_dist_sq = radius * radius;
+    //    for (auto& wall : room.walls)
+    //    {
+    //        const Vector2 screen_pos = GetWorldToScreen(wall.Center(), camera);
+    //        const float dist_sq = Vector2DistanceSqr(mouse, screen_pos);
+    //        if (dist_sq < closest_dist_sq) 
+    //        {
+    //            closest_dist_sq = dist_sq;
+    //            hovered_wall = &wall;
+    //        }
+    //        DrawCircleV(screen_pos, hovered_wall == &wall ? radius : 4.0f,
+    //            hovered_wall == &wall ? WHITE : GRAY);
+    //    }
+    //    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) 
+    //    {
+    //        handle = Wall::Handle{};
+    //    }
+    //    if (hovered_wall == nullptr)
+    //    {
+    //        return;
+    //    }
+
+    //    const Vector3 move_dir = hovered_wall->Normal(); 
+    //    const Vector3 plane_normal = move_dir; 
+    //    const Vector3 dir_norm = Vector3Normalize(plane_normal);
+    //    const Ray ray = GetMouseRay(mouse, camera);
+    //    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
+
+    //    //const Ray direction_ray{ hovered_wall->Center(), plane_normal };
+    //    const float plane_d = Vector3DotProduct(plane_normal, hovered_wall->Center());
+    //    const RayHit hit = RayIntersectPlane(ray, plane_normal, plane_d);        
+
+    //    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_wall)
+    //    {
+
+    //        if (hit.hit) 
+    //        {
+    //            handle.wall = hovered_wall;
+    //            handle.last_hit = hit.point;
+    //            handle.selected = true;
+
+    //            const Vector3 to_hit = Vector3Subtract(hit.point, hovered_wall->Center());
+    //            handle.start_t = Vector3DotProduct(to_hit, dir_norm); // store scalar along ray
+
+    //            // Store the wall center position for reference
+    //            handle.start_center = hovered_wall->Center();
+    //        }
+    //    }
+
+    //    constexpr float min_dist = -2.0f; // how far you can move in the -normal direction
+    //    constexpr float max_dist = 2.0f; // how far you can move in the +normal direction
+
+    //    if (handle.selected && handle.wall)
+    //    {
+    //        const Vector3 to_hit = Vector3Subtract(hit.point, handle.start_center);
+    //        const float current_t = Vector3DotProduct(to_hit, dir_norm);
+    //        const float delta_t = current_t - handle.start_t;
+    //        const float final_t = fmaxf(min_dist, fminf(max_dist, delta_t));
+    //        const Vector3 line_position = Vector3Add(handle.start_center,
+    //            Vector3Scale(dir_norm, final_t));
+
+    //        const Vector3 move_delta = Vector3Subtract(line_position, handle.start_center);
+    //        room.Mirror_resize(*handle.wall, move_delta);
+    //    }
+    //}
+
 
     //if (active_handle != ROOM_SURFACE::None && IsKeyPressed(KEY_D))
     //{
@@ -867,6 +965,15 @@ public:
         room.Draw_floor(DARKGRAY);
         room.Draw_walls(WHITE);
 
+        if (handle.wall)
+        {
+          handle.wall->Draw(GREEN);
+          DrawSphere(handle.last_hit, 0.5f, GREEN);
+          const Ray direction_ray{ handle.wall->Center(), handle.wall->Normal() };
+
+          DrawRay(direction_ray, GREEN);
+
+        }
 
         const Vector3 origo = { 0.0f, 5.0f, 0.0f };
 

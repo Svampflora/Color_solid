@@ -394,10 +394,26 @@ struct Attribute
     float width = 1.0f, height = 2.0f;
     Type type = Type::Door;
 
-
     float Area() const noexcept
     {
         return width * height;
+    }
+};
+
+struct Skirting 
+{
+    float height = 0.07f;
+    std::vector<Paint*> paint_layers;
+
+    float Area(const Wall& wall, const std::pair<size_t, size_t>& bottom_vertices) const //TODO: make exact
+    {
+        // Assume base edge is bottom line of polygon
+        const auto& v0 = wall.Vertex( bottom_vertices.first);
+        const auto& v1 = wall.Vertex(bottom_vertices.second);
+
+        float width = Vector3Distance(v0, v1);
+        return width * height;
+        // generalized version: extrude base edges and compute polygon area
     }
 };
 
@@ -414,6 +430,7 @@ struct Wall
     std::vector<size_t> vertex_indices;
     const std::vector< Vector3>* room_vertices = nullptr;
     std::vector<Attribute> openings{};
+    Skirting skirt_board;
 
     Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept :
         vertex_indices(indices), 
@@ -789,7 +806,16 @@ struct Room
             }
             else if (i == cieling_index)
             {
-                walls.at(i).Draw_filled(WHITE);
+                if (walls.at(i).paint_layers.empty())
+                {
+                    walls.at(i).Draw_filled(WHITE);
+
+                }
+                else
+                {
+                    walls.at(i).Draw(color);
+
+                }
 
             }
             else
@@ -872,7 +898,6 @@ public:
         const Vector2 mouse = GetMousePosition();
         constexpr float radius = 10.0f;
 
-        // 1. Hover detection
         Wall* hovered_wall = nullptr;
         float closest_distance_sq = radius * radius;
 

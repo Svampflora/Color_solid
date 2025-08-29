@@ -6,6 +6,7 @@
 #include <format>
 #include <array>
 #include <optional>
+//#include <algorithm>
 
 //------------ text utils --------------------
 #include <codeanalysis\warnings.h>
@@ -35,6 +36,16 @@ RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance)
         }
     }
     return result;
+}
+bool IntersectLineWithHorizontalPlane(Vector3 a, Vector3 b, float planeY, Vector3& outPoint) 
+{
+    // If both points are on the same side -> no intersection
+    if ((a.y < planeY && b.y < planeY) || (a.y > planeY && b.y > planeY)) return false;
+    
+    // Linear interpolation along edge
+    float t = (planeY - a.y) / (b.y - a.y);
+    outPoint = Vector3Lerp(a, b, t);
+    return true;
 }
 Vector3 RotationMatrixToEuler(Matrix m)
 {
@@ -368,6 +379,47 @@ static inline void DrawTriangleFan3D(const std::vector<Vector3>& points, Color c
     rlEnd();
 }
 
+
+static inline Vector3 PolygonNormal(const std::vector<Vector3>& vertices)
+{
+    if (vertices.size() < 3) return Vector3Zero();
+
+    const Vector3 u = Vector3Subtract(vertices[1], vertices[0]);
+    const Vector3 v = Vector3Subtract(vertices[2], vertices[0]);
+    return Vector3Normalize(Vector3CrossProduct(u, v));
+}
+static inline float PolygonArea(const std::vector<Vector3>& vertices)
+{
+    if (vertices.size() < 3) return 0.0f;
+
+    std::vector<Vector3> points = vertices;
+
+    const Vector3 u = Vector3Subtract(points[1], points[0]);
+    const Vector3 u_dir = Vector3Normalize(u);
+    const Vector3 v_dir = Vector3Normalize(Vector3CrossProduct(PolygonNormal(vertices), u_dir));
+
+    std::vector<Vector2> projected;
+    const Vector3 origin = points[0];
+
+    for (const Vector3& p : points)
+    {
+        const Vector3 rel = Vector3Subtract(p, origin);
+        const float x = Vector3DotProduct(rel, u_dir);
+        const float y = Vector3DotProduct(rel, v_dir);
+        projected.push_back({ x, y });
+    }
+
+    float area = 0.0f;
+    const size_t n = projected.size();
+    for (size_t i = 0; i < n; ++i)
+    {
+        const Vector2& a = projected[i];
+        const Vector2& b = projected[(i + 1) % n];
+        area += (a.x * b.y - b.x * a.y);
+    }
+
+    return std::abs(area * 0.5f);
+}
 #pragma warning(pop)
 
 
@@ -402,19 +454,32 @@ struct Attribute
 
 struct Skirting 
 {
-    float height = 0.07f;
+    float height = 0.15f;
     std::vector<Paint*> paint_layers;
 
-    float Area(const Wall& wall, const std::pair<size_t, size_t>& bottom_vertices) const //TODO: make exact
-    {
-        // Assume base edge is bottom line of polygon
-        const auto& v0 = wall.Vertex( bottom_vertices.first);
-        const auto& v1 = wall.Vertex(bottom_vertices.second);
 
-        float width = Vector3Distance(v0, v1);
-        return width * height;
-        // generalized version: extrude base edges and compute polygon area
+    Color Get_color() const noexcept
+    {
+        if (paint_layers.empty())
+        {
+            return WHITE;
+        }
+        return paint_layers.front()->color;
     }
+    //void Draw(const std::pair<size_t, size_t>& bottom_vertices)
+    //{
+
+    //}
+    //float Area(const Wall& wall, const std::pair<size_t, size_t>& bottom_vertices) const //TODO: make exact
+    //{
+    //    // Assume base edge is bottom line of polygon
+    //    const auto& v0 = wall.Vertex( bottom_vertices.first);
+    //    const auto& v1 = wall.Vertex(bottom_vertices.second);
+
+    //    float width = Vector3Distance(v0, v1);
+    //    return width * height;
+    //    // generalized version: extrude base edges and compute polygon area
+    //}
 };
 
 struct Wall
@@ -497,38 +562,18 @@ struct Wall
 
         return max_y - min_y;
     }
-    float Area() const
+    float Total_area() const
     {
-        if (room_vertices->size() < 3) return 0.0f;
+        return PolygonArea(Vertices());
 
-        std::vector<Vector3> points = Vertices();
-
-        const Vector3 u = Vector3Subtract(points[1], points[0]);         
-        const Vector3 u_dir = Vector3Normalize(u);
-        const Vector3 v_dir = Vector3Normalize(Vector3CrossProduct(Normal(), u_dir));
-
-        std::vector<Vector2> projected;
-        const Vector3 origin = points[0];
-
-        for (const Vector3& p : points) 
-        {
-            const Vector3 rel = Vector3Subtract(p, origin);
-            const float x = Vector3DotProduct(rel, u_dir);
-            const float y = Vector3DotProduct(rel, v_dir);
-            projected.push_back({ x, y });
-        }
-
-        float area = 0.0f;
-        const size_t n = projected.size();
-        for (size_t i = 0; i < n; ++i) 
-        {
-            const Vector2& a = projected[i];
-            const Vector2& b = projected[(i + 1) % n];
-            area += (a.x * b.y - b.x * a.y);
-        }
-
-        return std::abs(area * 0.5f);
     }
+    float Wall_paint_area() const
+    {
+        std::array<Vector3, 4> arr = Wall_paint_quad();
+        std::vector <Vector3> vec(arr.begin(), arr.end());
+        return PolygonArea(vec);
+    }
+
     float Liters_of(const Paint* target) const
     {
         float total = 0.0f;
@@ -538,13 +583,37 @@ struct Wall
             if (layer == target)
             {
                 const size_t coats = layer->coats > 0 ? layer->coats : layer->coats;
-                total += (Area() * coats) / layer->m2_per_liter;
+                total += (Wall_paint_area() * coats) / layer->m2_per_liter;
             }
         }
 
         return total;
     }
+    std::array<Vector3, 4> Wall_paint_quad() const
+    {
+        std::array<Vector3, 4> skirting_quad = Skirting_quad();
+        std::array<Vector3, 4> wall_quad = Quad();
+        wall_quad.at(0) = skirting_quad.at(3);
+        wall_quad.at(1) = skirting_quad.at(2);
 
+        return wall_quad;
+    }
+    std::array<Vector3, 4> Skirting_quad() const
+    {
+        if (room_vertices->size() < 4) throw;
+
+        const Vector3 v0_bottom = Vertex(0);
+        const Vector3 v1_bottom = Vertex(1);
+        const Vector3 v1_top = Vertex(2); 
+        const Vector3 v0_top = Vertex(3); //TODO: should be the last index of wall for polygon-support
+        const float plane_y = v0_bottom.y + skirt_board.height;
+
+        Vector3 v0_skirting, v1_skirting;
+        IntersectLineWithHorizontalPlane(v0_bottom, v0_top, plane_y, v0_skirting);
+        IntersectLineWithHorizontalPlane(v1_bottom, v1_top, plane_y, v1_skirting);
+
+        return { v0_bottom, v1_bottom, v1_skirting, v0_skirting };
+    }
     Vector3 Center() const
     {
         if (room_vertices->empty()) return Vector3Zero();
@@ -560,10 +629,9 @@ struct Wall
     Vector3 Normal() const
     {
         if (room_vertices->size() < 3) return Vector3Zero();
-
-        const Vector3 u = Vector3Subtract(Vertex(1), Vertex(0));
-        const Vector3 v = Vector3Subtract(Vertex(2), Vertex(0));
-        return Vector3Normalize(Vector3CrossProduct(u, v));
+        std::array<Vector3, 4> arr = Quad();
+        std::vector <Vector3> vec(arr.begin(), arr.end());
+        return PolygonNormal(vec);
     }
     std::vector<Vector3> Vertices() const
     {
@@ -579,7 +647,7 @@ struct Wall
         }
         return points;
     }
-    std::array<Vector3, 4> Quad() const
+    std::array<Vector3, 4> Quad() const //TODO: replace with std::vector Polygon()
     {
         if (room_vertices->size() < 4) throw;
 
@@ -631,7 +699,7 @@ struct Wall
         DrawAnchoredText3D
         (
             GetFontDefault(),
-            TextFormat("%.1f M2", Area()),
+            TextFormat("%.1f M2", Wall_paint_area()),
             world_pos,
             0.4f, 0.1f,
             false,
@@ -672,11 +740,11 @@ struct Wall
             rotation
         );
     }
-    void Draw(const Color color) const
+    void Draw_outline(const Color color) const
     {
         if (!paint_layers.empty())
         {
-            Draw_filled(paint_layers.back()->color);
+            Draw_filled();
         }
 
         DrawPolygonLinesEx3D(Vertices(), color);
@@ -684,7 +752,17 @@ struct Wall
         Draw_Area(TextAnchor3D::Center);
         Draw_Distance(Vertex(0), Vertex(1), color, TextAnchor3D::TopCenter);
         Draw_Distance(Vertex(0), Vertex(3), color, TextAnchor3D::MiddleLeft);
+
+
+        std::array<Vector3, 4> arr = Skirting_quad();
+        std::vector <Vector3> vec(arr.begin(), arr.end());
+        DrawPolygonLinesEx3D(vec, skirt_board.Get_color());
        
+    }
+    void Draw_filled() const
+    {
+        DrawQuad(Wall_paint_quad(), paint_layers.front()->color);
+        DrawQuad(Skirting_quad(), skirt_board.Get_color());
     }
     void Draw_filled(const Color& color) const
     {
@@ -749,12 +827,12 @@ struct Room
         walls.push_back(Wall({ 4, 5, 6, 7 }, &corners));
         cieling_index = walls.size() - 1;
     }
-	float Total_wall_area() const noexcept
+	float Total_wall_paint_area() const noexcept
 	{
         float area = 0.0f;
         for (const Wall& wall : walls)
         {
-            area += wall.Area();
+            area += wall.Wall_paint_area();
         }
         return area;
 	}
@@ -762,7 +840,7 @@ struct Room
     {
         float area = 0.0f;
         for (const Wall& wall : selected_walls)
-            area += wall.Area();
+            area += wall.Wall_paint_area();
         return area;
     }
     float Liters_of(const Paint* target) const
@@ -813,14 +891,14 @@ struct Room
                 }
                 else
                 {
-                    walls.at(i).Draw(color);
+                    walls.at(i).Draw_filled();
 
                 }
 
             }
             else
             {
-                walls.at(i).Draw(color);
+                walls.at(i).Draw_outline(color);
 
             }
         }
@@ -1035,8 +1113,5 @@ public:
             DrawRectangleRoundedLines(paint_menu, 0.5f, 10, 20.0f, DARKGRAY);
             
         }
-
-        //DrawText(TextFormat("Golvyta: %.1f M2", room.Floor_area()), 20, 80, 50, RAYWHITE);
-        // DrawText(TextFormat("Strykningar: %i st", coats), 20, 120, 50, RAYWHITE);
 	};
 };

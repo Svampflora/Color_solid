@@ -16,6 +16,7 @@
 #include <raymath.h>
 #include <cmath>
 
+
 struct RayHit
 {
     bool hit;
@@ -439,12 +440,65 @@ struct Paint
 
 };
 
-struct Attribute
+struct Door
 {
-    enum class Type {Door, Window};
+    float wall_location; //TODO: only stored here for convinience; door does not need to know where it is
+    float width, height, architrave;
 
-    float width = 1.0f, height = 2.0f;
-    Type type = Type::Door;
+    Door(const float& _wall_location )
+    {
+        width = 1.0f, 
+        height = 2.0f, 
+        architrave = 0.05f;
+        wall_location = _wall_location;
+    }
+
+    float Area() const noexcept 
+    {
+        return width * height;
+    }
+
+    float Height() const noexcept
+    {
+        return height;
+    }
+
+    float Width() const noexcept
+    {
+        return width;
+    }
+
+    float Total_height() const noexcept
+    {
+        return height + architrave;
+    }
+
+    float Total_width() const noexcept
+    {
+        return width + architrave * 2;
+    }
+
+    std::array<Vector3, 4> Quad(const Vector3& wall_normal, const Vector3& bottom_center) const
+    {
+        constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+
+        Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, wall_normal));
+        Vector3 up = Vector3Normalize(world_up);
+
+        const Vector3 p0 = Vector3Subtract(bottom_center, Vector3Scale(right , half_of(width)));     // bottom left
+        const Vector3 p1 = Vector3Add(bottom_center, Vector3Scale(right, half_of(width)));           // bottom right
+        const Vector3 p2 = Vector3Add(p1 , Vector3Scale(up , height));                               // top right
+        const Vector3 p3 = Vector3Add(p0 , Vector3Scale(up , height));                               // top left
+
+        return{ p0, p1, p2, p3 };
+    }
+
+};
+
+struct Window
+{
+    Vector2 position{ 0.0f, 0.0f };
+    float width = 1.0f, height = 1.5f, depth = 0.1f;
 
     float Area() const noexcept
     {
@@ -457,29 +511,29 @@ struct Skirting
     float height = 0.15f;
     std::vector<Paint*> paint_layers;
 
+    bool Is_painted() const noexcept
+    {
+        return !paint_layers.empty();
+    }
 
-    Color Get_color() const noexcept
+    Color Get_color() const
     {
         if (paint_layers.empty())
         {
-            return WHITE;
+            throw std::runtime_error("skirting has no color to provide");
         }
         return paint_layers.front()->color;
     }
-    //void Draw(const std::pair<size_t, size_t>& bottom_vertices)
-    //{
 
-    //}
-    //float Area(const Wall& wall, const std::pair<size_t, size_t>& bottom_vertices) const //TODO: make exact
-    //{
-    //    // Assume base edge is bottom line of polygon
-    //    const auto& v0 = wall.Vertex( bottom_vertices.first);
-    //    const auto& v1 = wall.Vertex(bottom_vertices.second);
+    void Add_Paint(Paint& paint)
+    {
+        paint_layers.push_back(&paint);
+    }
 
-    //    float width = Vector3Distance(v0, v1);
-    //    return width * height;
-    //    // generalized version: extrude base edges and compute polygon area
-    //}
+    void Set_height(const float& new_height) noexcept
+    {
+        height = new_height;
+    }
 };
 
 struct Wall
@@ -494,7 +548,7 @@ struct Wall
     std::vector<Paint*> paint_layers;
     std::vector<size_t> vertex_indices;
     const std::vector< Vector3>* room_vertices = nullptr;
-    std::vector<Attribute> openings{};
+    std::vector<Door> doors{};
     Skirting skirt_board;
 
     Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept :
@@ -573,7 +627,6 @@ struct Wall
         std::vector <Vector3> vec(arr.begin(), arr.end());
         return PolygonArea(vec);
     }
-
     float Liters_of(const Paint* target) const
     {
         float total = 0.0f;
@@ -591,6 +644,10 @@ struct Wall
     }
     std::array<Vector3, 4> Wall_paint_quad() const
     {
+        if (skirt_board.height <= 0.0f)
+        {
+            return Quad();
+        }
         std::array<Vector3, 4> skirting_quad = Skirting_quad();
         std::array<Vector3, 4> wall_quad = Quad();
         wall_quad.at(0) = skirting_quad.at(3);
@@ -649,9 +706,8 @@ struct Wall
     }
     std::array<Vector3, 4> Quad() const //TODO: replace with std::vector Polygon()
     {
-        if (room_vertices->size() < 4) throw;
-
-
+        if (room_vertices->size() < 4) throw std::runtime_error("too few vertices availible");
+        
         const Vector3 p0 = Vertex(0);
         const Vector3 p1 = Vertex(1);
         const Vector3 p2 = Vertex(2);
@@ -659,9 +715,13 @@ struct Wall
 
         return{ p0, p1, p2, p3 };
     }
+    Vector3 Floor_edge() const
+    {
+        return Vector3Subtract(Vertex(1), Vertex(0));
+    }
     std::array<Vector3, 3> Triangle() const
     {
-        if (room_vertices->size() < 3) throw;
+        if (room_vertices->size() < 3) throw std::runtime_error("too few vertices availible");
 
 
         const Vector3 p0 = Vertex(0);
@@ -673,6 +733,25 @@ struct Wall
     void Add_Paint(Paint& paint)
     {
         paint_layers.push_back(&paint);
+    }
+    void Try_Add_Door() noexcept
+    {
+        float total_door_width = 1.0f; //TODO: magic prediction of door.width
+        for (const auto& door : doors)
+        {
+            total_door_width += door.Total_width();
+        }
+        if (total_door_width >= Length()) //TODO: Floor_edge.magnitude == Length()?
+        {
+            return;
+        }
+
+
+        //const Vector3 floor_direction = Vector3Normalize(Floor_edge());
+
+        const Door door(0.5f);
+        //TODO: squeeze in door where possible
+        doors.push_back(door);
     }
     void Draw_Area(const TextAnchor3D anchor) const
     {
@@ -742,31 +821,93 @@ struct Wall
     }
     void Draw_outline(const Color color) const
     {
+
+
+        DrawPolygonLinesEx3D(Vertices(), color);
+
+        //Draw_Area(TextAnchor3D::Center);
+        //Draw_Distance(Vertex(0), Vertex(1), color, TextAnchor3D::TopCenter);
+        //Draw_Distance(Vertex(0), Vertex(3), color, TextAnchor3D::MiddleLeft);
+
+
+        //std::array<Vector3, 4> arr = Skirting_quad();
+        //std::vector <Vector3> vec(arr.begin(), arr.end());
+        //DrawPolygonLinesEx3D(vec, skirt_board.Get_color());
+       
+    }
+
+    void Draw_doors_outline(const Color color) const
+    {
+        if(doors.empty())
+        {
+            return;
+        }
+
+        const Vector3 floor_direction = Vector3Normalize(Floor_edge());
+        for (int i = 0; i < doors.size(); i++)
+        {
+            const float door_location = 1.0f / (i + 2);
+            const float corner_to_door = door_location * Length();
+            const Vector3 door_position = Vector3Add(Vertex(0), Vector3Scale(floor_direction, corner_to_door));
+
+            DrawQuad(doors.at(i).Quad(Normal(), door_position), color);
+        }
+    }
+    void Draw_skirting_outline(const Color color) const
+    {
+        
+        std::array<Vector3, 4> arr = Skirting_quad();
+        std::vector <Vector3> vec(arr.begin(), arr.end());
+        DrawPolygonLinesEx3D(vec, color);
+
+    }
+    void Draw_filled() const
+    {
+        DrawQuad(Wall_paint_quad(), paint_layers.front()->color);
+    }
+    void Draw_skirting_filled() const
+    {
+        DrawQuad(Skirting_quad(), skirt_board.Get_color());
+
+    }
+    void Draw_filled(const Color& default_color) const
+    {
+        if (paint_layers.empty())
+        {
+            DrawQuad(Wall_paint_quad(), default_color);
+        }
+        else
+        {
+            Draw_filled();
+        }
+    }
+    void Draw() const 
+    {
+        const Color text_color = WHITE;
+
         if (!paint_layers.empty())
         {
             Draw_filled();
         }
 
-        DrawPolygonLinesEx3D(Vertices(), color);
-
+        Draw_outline(WHITE);
         Draw_Area(TextAnchor3D::Center);
-        Draw_Distance(Vertex(0), Vertex(1), color, TextAnchor3D::TopCenter);
-        Draw_Distance(Vertex(0), Vertex(3), color, TextAnchor3D::MiddleLeft);
+        Draw_Distance(Vertex(0), Vertex(1), text_color, TextAnchor3D::TopCenter);
+        Draw_Distance(Vertex(0), Vertex(3), text_color, TextAnchor3D::MiddleLeft);
 
+        if (skirt_board.Is_painted())
+        {
+            Draw_skirting_filled();
+        }
+        else
+        {
+            Draw_skirting_outline(WHITE);
+        }
 
-        std::array<Vector3, 4> arr = Skirting_quad();
-        std::vector <Vector3> vec(arr.begin(), arr.end());
-        DrawPolygonLinesEx3D(vec, skirt_board.Get_color());
-       
-    }
-    void Draw_filled() const
-    {
-        DrawQuad(Wall_paint_quad(), paint_layers.front()->color);
-        DrawQuad(Skirting_quad(), skirt_board.Get_color());
-    }
-    void Draw_filled(const Color& color) const
-    {
-        DrawQuad(Quad(), color);
+        if (!doors.empty())
+        {
+            Draw_doors_outline(WHITE);
+        }
     }
 };
 
@@ -823,9 +964,14 @@ struct Room
 
         walls.push_back(Wall({ 3, 2, 1, 0 }, &corners ));
         floor_index = walls.size() - 1;
+        walls.at(floor_index).skirt_board.Set_height(0.0f); //TODO: demeter
 
         walls.push_back(Wall({ 4, 5, 6, 7 }, &corners));
         cieling_index = walls.size() - 1;
+        walls.at(cieling_index).skirt_board.Set_height(0.0f); //TODO: demeter
+
+        walls.at(0).Try_Add_Door();
+
     }
 	float Total_wall_paint_area() const noexcept
 	{
@@ -869,7 +1015,7 @@ struct Room
                 corner = Vector3Subtract(corner, move_delta);
         }
     }
-    void Draw_walls(const Color& color) const
+    void Draw_walls() const
     {
         if (walls.size() < 3) return;
 
@@ -878,32 +1024,82 @@ struct Room
         {
             if (i == floor_index)
             {
-                walls.at(i).Draw_filled(DARKGRAY);
-                walls.at(i).Draw_Area(TextAnchor3D::Center);
+                walls.at(i).Draw_filled(DARKGRAY);                    
 
+                walls.at(i).Draw_Area(TextAnchor3D::Center);            
             }
             else if (i == cieling_index)
             {
-                if (walls.at(i).paint_layers.empty())
-                {
-                    walls.at(i).Draw_filled(WHITE);
-
-                }
-                else
-                {
-                    walls.at(i).Draw_filled();
-
-                }
-
+                walls.at(i).Draw_filled(WHITE);
             }
             else
             {
-                walls.at(i).Draw_outline(color);
+                walls.at(i).Draw();
 
             }
         }
     }
 };
+
+//struct Button
+//{
+//    std::string label{};
+//    Rectangle hitbox{};
+//};
+//
+//class Paint_Menu 
+//{
+//    std::vector<Button> buttons;
+//    Paint* selected_paint = nullptr;
+//
+//public:
+//    Paint_Menu(const std::vector<Paint>& paints, const Rectangle& area)
+//    {
+//        int x = area.x;
+//        int y = area.y;
+//        int w = 50, h = 50; // button size
+//        int margin = 10;
+//
+//        for (auto& paint : paints) 
+//        {
+//            Rectangle rect = { x, y, w, h };
+//            buttons.emplace_back(
+//                rect,
+//                [&]() { selected_paint = const_cast<Paint*>(&paint); }
+//            );
+//
+//            // next button position
+//            x += w + margin;
+//            if (x + w > area.x + area.width) 
+//            { // wrap to next line
+//                x = area.x;
+//                y += h + margin;
+//            }
+//        }
+//    }
+//
+//    void update(const Vector2& cursor, bool clicked) 
+//    {
+//        for (auto& button : buttons) 
+//        {
+//            button.update(cursor, clicked);
+//        }
+//    }
+//
+//    void render() const 
+//    {
+//        for (const auto& button : buttons) 
+//        {
+//            button.render();
+//        }
+//        if (selected_paint) 
+//        {
+//            // draw selection highlight
+//        }
+//    }
+//
+//    Paint* get_selected() const noexcept { return selected_paint; }
+//};
 
 class Simulation : public State
 {
@@ -989,9 +1185,6 @@ public:
                 closest_distance_sq = dist_sq;
                 hovered_wall = &wall;
             }
-
-            //DrawCircleV(screen_position, hovered_wall == &wall ? radius : 4.0f,
-            //    hovered_wall == &wall ? WHITE : GRAY);
         }
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_wall)
@@ -1041,6 +1234,8 @@ public:
     {
         const Rectangle paint_menu{ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF(), 80, 80 };
 
+        //selected_paint = paint_menu(paints);
+
         for (auto& paint : paints)
         {
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
@@ -1062,7 +1257,7 @@ public:
 	{
         BeginMode3D(camera);
 
-        room.Draw_walls(WHITE);
+        room.Draw_walls();
         
 
         //DEBUG:

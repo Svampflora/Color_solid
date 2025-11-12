@@ -1,5 +1,5 @@
 #pragma once
-#include"State.h"
+#include "State.h"
 
 class Start_screen : public State
 {

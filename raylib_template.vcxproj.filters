@@ -18,10 +18,10 @@
     <ClCompile Include="Source\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Game.cpp">
+    <ClCompile Include="Source\Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Gameplay.cpp">
+    <ClCompile Include="Source\Color_Picker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Endscreen.cpp">
@@ -33,9 +33,21 @@
     <ClCompile Include="Source\ColorUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Room.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\RayUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Utilities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\Game.h">
+    <ClInclude Include="Source\Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\State.h">
@@ -44,7 +56,7 @@
     <ClInclude Include="Source\Utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Gameplay.h">
+    <ClInclude Include="Source\Color_Picker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Endscreen.h">
@@ -62,7 +74,13 @@
     <ClInclude Include="Source\ColorUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Simulation.h">
+    <ClInclude Include="Source\Editor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Room.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\RayUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -4,7 +4,7 @@
 #include "State.h"
 #include "ColorUtils.h"
 
-class Play_screen : public State
+class Color_Picker : public State
 {
 	std::string ncsInput = { "S 1050-Y90R" };
 	ColorWheel wheel;
@@ -12,7 +12,7 @@ class Play_screen : public State
 
 public:
 	
-	Play_screen();
+	Color_Picker();
 	std::unique_ptr<State> Update() override;
 	void Render() const override;
 

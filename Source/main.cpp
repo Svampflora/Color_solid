@@ -21,23 +21,20 @@
 *
 ********************************************************************************************/
 
-#include "game.h"
+#include "Application.h"
 #include <iostream>
-
-
-
 
 
 int main(void)
 {    
     try
     { 
-        Game game{};
+        Application application{};
 
         while (!WindowShouldClose())
         {
-            game.Update();
-            game.Render();
+            application.Update();
+            application.Render();
         }
     }
     catch (const std::exception& _exception)

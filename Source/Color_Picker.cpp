@@ -1,5 +1,7 @@
-#include "Gameplay.h"
+#include "Color_Picker.h"
+
 #include "Endscreen.h"
+
 
 
 
@@ -40,7 +42,7 @@ void remove_if(Container& container, Predicate predicate)
 
 
 
-std::unique_ptr<State> Play_screen::Update()
+std::unique_ptr<State> Color_Picker::Update()
 {
 	if (IsKeyReleased(KEY_Q))
 	{
@@ -55,7 +57,7 @@ std::unique_ptr<State> Play_screen::Update()
 }
 
 [[gsl::suppress(f.6)]]
-Play_screen::Play_screen() : 
+Color_Picker::Color_Picker() :
 	wheel({
 	{0.0f, NCS_YELLOW},
 	{PI / 2, NCS_RED},
@@ -76,7 +78,7 @@ Play_screen::Play_screen() :
 
 }
 
-void Play_screen::Render()  const
+void Color_Picker::Render()  const
 {
 	//Color targetRGB = NCS_To_RGB(ncsInput);
 	//DrawRectangle(400, 100, 100, 100, targetRGB);

@@ -1,13 +1,6 @@
 #pragma once
-#include"State.h"
+#include "State.h"
 #include <vector>
-
-
-struct Score_data
-{
-	std::string name{ "" };
-	unsigned int score{ 0 };
-};
 
 class End_screen : public State
 {

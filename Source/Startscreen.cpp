@@ -1,6 +1,7 @@
 #include "Startscreen.h"
-#include "Gameplay.h"
-#include "Simulation.h"
+
+#include "Color_Picker.h"
+#include "Editor.h"
 
 Start_screen::Start_screen() noexcept{}
 
@@ -9,7 +10,7 @@ std::unique_ptr<State> Start_screen::Update()
 {
 	if (IsKeyReleased(KEY_SPACE))
 	{
-		return std::make_unique<Simulation>();
+		return std::make_unique<Editor>();
 	}
 	return nullptr;
 }

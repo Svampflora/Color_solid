@@ -8,33 +8,34 @@
 
 #include "State.h"
 #include "Room.h"
+#include "CameraController.h"
 
 struct Camera3D;
 
 class Editor : public State
 {
-	Camera3D camera = { 0 };
-    Room room{};
+	CameraController& camera_controller;
+    Room& room;
     Vector2 camera_angle = { 0.0f , 0.0f };
     float camera_distance = 10.0f;
     Wall::Handle handle{};
     std::vector<Paint> paints;
-
     Paint* selected_paint = nullptr;
-
 
     float min_size = 1.0f;
     float max_size = 10.0f;
 
+public:
+
+    Editor(Room& room_ref, CameraController& camera_controller_ref);
+    std::unique_ptr<State> Update() override;
+    void Render() const override;
+
+private:
     Wall* Hovered_handle();
     Wall* Hovered_wall();
     const Wall* Hovered_wall() const;
     void Edit();
     void Paint_selection() noexcept;
-
-public:
-
-    Editor() noexcept;
-    std::unique_ptr<State> Update() override;
-    void Render() const override;
+    void Draw_UI() const;
 };

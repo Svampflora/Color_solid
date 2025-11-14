@@ -6,7 +6,7 @@
 #include "raymath.h"
 #pragma warning(pop)
 
-#include "Endscreen.h"
+#include "FloorPlanEditor.h"
 #include "Utilities.h"
 #include "RayUtils.h"
 
@@ -20,7 +20,7 @@ Wall* Editor::Hovered_handle()
 
     for (auto& wall : room.walls)
     {
-        const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera);
+        const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
         const float dist_sq = Vector2DistanceSqr(mouse, screen_position);
 
         if (dist_sq < closest_distance_sq)
@@ -40,11 +40,11 @@ Wall* Editor::Hovered_wall()
 
     for (auto& wall : room.walls)
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
 
         if (RayIntersectsWall(ray, wall).hit)
         {
-            if (wall.Facing_camera(camera.position))
+            if (wall.Facing_camera(camera_controller.camera.position)) //TODO: create .camera_position()
             {
                 hovered_wall = &wall;
             }
@@ -59,11 +59,11 @@ const Wall* Editor::Hovered_wall() const
 
     for (auto& wall : room.walls)
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
 
         if (RayIntersectsWall(ray, wall).hit)
         {
-            if (wall.Facing_camera(camera.position))
+            if (wall.Facing_camera(camera_controller.camera.position))
             {
                 hovered_wall = &wall;
             }
@@ -79,7 +79,7 @@ void Editor::Edit()
 
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_wall)
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
 
         if (selected_paint)
         {
@@ -111,7 +111,7 @@ void Editor::Edit()
 
         const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
         const Vector3 perp_plane_normal = sideways;
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
         const float plane_d = Vector3DotProduct(perp_plane_normal, handle.wall->Center());
         const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
 
@@ -157,98 +157,36 @@ void Editor::Paint_selection() noexcept
     }
 }
 
-Editor::Editor() noexcept
+Editor::Editor(Room& roomRef, CameraController& camRef) : 
+    room(roomRef), 
+    camera_controller(camRef)
 {
-    camera.position = { 0.0f, 10.0f, 10.0f };
-    camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
-    camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
-    camera.fovy = 55.0f;
-    camera.projection = CAMERA_CUSTOM;
-
-    room.Generate_box_room(4.0f, 5.0f, 2.5f);
-
-    paints.push_back(Paint{});
-
+    
+    paints.push_back(Paint());
+    camera_controller.Set_birds_eye();
 }
 std::unique_ptr<State> Editor::Update()
 {
-    if (IsKeyReleased(KEY_Q))
+    if (IsKeyReleased(KEY_TAB))
     {
-        return std::make_unique<End_screen>();
+        return std::make_unique<FloorPlanEditor>(room, camera_controller);
     }
 
-    if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
-    {
-        const Vector2 mouse_delta = GetMouseDelta();
-        camera_angle.x -= mouse_delta.x * 0.01f;
-        camera_angle.y += mouse_delta.y * 0.01f;
-    }
-
-    camera_distance += GetMouseWheelMove() * -0.5f;
-    camera_distance = Clamp(camera_distance, 2.0f, 50.0f);
-    camera.position.x = sinf(camera_angle.x) * camera_distance;
-    camera.position.z = cosf(camera_angle.y) * camera_distance;
-
-    const Vector3 target = room.position;
-
-    camera.position =
-    {
-        target.x + camera_distance * cosf(camera_angle.y) * sinf(camera_angle.x),
-        target.y + camera_distance * sinf(camera_angle.y),
-        target.z + camera_distance * cosf(camera_angle.y) * cosf(camera_angle.x)
-    };
-    camera.target = target;
-
+    camera_controller.Update();
     Edit();
     Paint_selection();
 
     return nullptr;
 }
 
-void Editor::Render() const
+void Editor::Draw_UI() const 
 {
-    BeginMode3D(camera);
-
-    room.Draw_walls();
-
-    const Wall* hovered_wall = Hovered_wall();
-    if (selected_paint && hovered_wall)
-    {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
-
-        if (RayIntersectsSkirting(ray, *hovered_wall).hit)
-        {
-            const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
-            hovered_wall->Draw_skirting_filled(transparent_color);
-        }
-        else
-        {
-            const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
-            hovered_wall->Draw_filled(transparent_color);
-        }
-
-    }
-    //DEBUG:
-    //if (handle.wall)
-    //{
-    //  handle.wall->Draw(GREEN);
-    //  DrawSphere(handle.last_hit, 0.5f, GREEN);
-    //  const Ray direction_ray{ handle.wall->Center(), handle.wall->Normal() };
-    //  DrawRay(direction_ray, GREEN);
-    //}
-    //const Vector3 origo = { 0.0f, 5.0f, 0.0f };
-    //DrawLine3D(origo, Vector3Add(origo, Vector3Scale({ 1.0f, 0.0f, 0.0f }, 1.0f)), RED);
-    //DrawLine3D(origo, Vector3Add(origo, Vector3Scale({ 0.0f, 1.0f, 0.0f }, 1.0f)), BLUE);
-    //DrawLine3D(origo, Vector3Add(origo, Vector3Scale({ 0.0f, 0.0f, 1.0f }, 1.0f)), GREEN);
-
-    EndMode3D();
-
     constexpr float radius = 10.0f;
     float closest_distance_sq = radius * radius;
 
     for (const auto& wall : room.walls)
     {
-        const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera);
+        const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
         const float dist_sq = Vector2DistanceSqr(GetMousePosition(), screen_position);
 
         if (dist_sq < closest_distance_sq)
@@ -276,4 +214,34 @@ void Editor::Render() const
         DrawRectangleRoundedLines(paint_menu, 0.5f, 10, 20.0f, DARKGRAY);
 
     }
+}
+
+void Editor::Render() const
+{
+    camera_controller.Begin_3D();
+
+    room.Draw_walls();
+
+    const Wall* hovered_wall = Hovered_wall();
+    if (selected_paint && hovered_wall)
+    {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
+
+        if (RayIntersectsSkirting(ray, *hovered_wall).hit)
+        {
+            const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
+            hovered_wall->Draw_skirting_filled(transparent_color);
+        }
+        else
+        {
+            const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
+            hovered_wall->Draw_filled(transparent_color);
+        }
+
+    }
+
+    camera_controller.End_3D();
+
+    Draw_UI();
+
 };

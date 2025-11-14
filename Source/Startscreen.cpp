@@ -8,10 +8,11 @@ Start_screen::Start_screen() noexcept{}
 
 std::unique_ptr<State> Start_screen::Update()
 {
-	if (IsKeyReleased(KEY_SPACE))
-	{
-		return std::make_unique<Editor>();
-	}
+	//if (IsKeyReleased(KEY_SPACE))
+	//{
+
+	//	return std::make_unique<Editor>();
+	//}
 	return nullptr;
 }
 

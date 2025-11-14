@@ -165,9 +165,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Animator.cpp" />
+    <ClCompile Include="Source\CameraController.cpp" />
     <ClCompile Include="Source\ColorUtils.cpp" />
     <ClCompile Include="Source\Editor.cpp" />
-    <ClCompile Include="Source\Endscreen.cpp" />
+    <ClCompile Include="Source\FloorPlanEditor.cpp" />
     <ClCompile Include="Source\Application.cpp" />
     <ClCompile Include="Source\Color_Picker.cpp" />
     <ClCompile Include="Source\main.cpp" />
@@ -177,12 +179,14 @@
     <ClCompile Include="Source\Utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Animator.h" />
+    <ClInclude Include="Source\CameraController.h" />
     <ClInclude Include="Source\ColorUtils.h" />
     <ClInclude Include="Source\RayUtils.h" />
     <ClInclude Include="Source\Room.h" />
     <ClInclude Include="Source\Editor.h" />
     <ClInclude Include="Source\Settings.h" />
-    <ClInclude Include="Source\Endscreen.h" />
+    <ClInclude Include="Source\FloorPlanEditor.h" />
     <ClInclude Include="Source\Application.h" />
     <ClInclude Include="Source\Color_Picker.h" />
     <ClInclude Include="Source\Startscreen.h" />

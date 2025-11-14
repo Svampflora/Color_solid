@@ -1,6 +1,6 @@
 #include "Color_Picker.h"
 
-#include "Endscreen.h"
+#include "FloorPlanEditor.h"
 
 
 
@@ -44,14 +44,14 @@ void remove_if(Container& container, Predicate predicate)
 
 std::unique_ptr<State> Color_Picker::Update()
 {
-	if (IsKeyReleased(KEY_Q))
-	{
-		EndMode3D();
-		return std::make_unique<End_screen>();
-	}
-
-	const float scroll = GetMouseWheelMove();
-	solid.rotation.y += scroll * 5.0f;
+	//if (IsKeyReleased(KEY_Q))
+	//{
+	//	EndMode3D();
+	//	return std::make_unique<FloorPlanEditor>();
+	//}
+	//
+	//const float scroll = GetMouseWheelMove();
+	//solid.rotation.y += scroll * 5.0f;
 
 	return nullptr;
 }

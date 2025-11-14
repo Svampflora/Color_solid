@@ -24,7 +24,7 @@
     <ClCompile Include="Source\Color_Picker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Endscreen.cpp">
+    <ClCompile Include="Source\FloorPlanEditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Startscreen.cpp">
@@ -45,6 +45,12 @@
     <ClCompile Include="Source\Utilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CameraController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Animator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Application.h">
@@ -59,7 +65,7 @@
     <ClInclude Include="Source\Color_Picker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Endscreen.h">
+    <ClInclude Include="Source\FloorPlanEditor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Startscreen.h">
@@ -81,6 +87,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\RayUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CameraController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Animator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

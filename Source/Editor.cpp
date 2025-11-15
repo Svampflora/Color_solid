@@ -165,6 +165,7 @@ Editor::Editor(Room& roomRef, CameraController& camRef) :
     paints.push_back(Paint());
     camera_controller.Set_birds_eye();
 }
+
 std::unique_ptr<State> Editor::Update()
 {
     if (IsKeyReleased(KEY_TAB))

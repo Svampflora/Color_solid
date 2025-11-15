@@ -27,13 +27,19 @@ std::unique_ptr<State> FloorPlanEditor::Update()
 		return std::make_unique<Editor>(room, camera_controller);
 	}
 
-    
+	camera_controller.Update();
+
 
 	return nullptr;
 }
 
 void FloorPlanEditor::Render() const
 {
+	camera_controller.Begin_3D();
+
 	room.walls.at(room.floor_index).Draw();
+
+	camera_controller.End_3D();
+
 }
 

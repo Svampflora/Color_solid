@@ -1,5 +1,6 @@
 #pragma once
 #include "RayUtils.h"
+#include "Paint.h"
 #include <array>
 #include <vector>
 
@@ -8,15 +9,7 @@ struct Color;
 struct RayCollision;
 struct Ray;
 
-struct Paint
-{
-    Color color;
-    size_t coats;
-    float m2_per_liter;
 
-    Paint();
-
-};
 
 
 struct Door
@@ -36,16 +29,18 @@ struct Door
 
 };
 
-//struct Window //TODO solve naming collision with Window
-//{
-//    Vector2 position;
-//    float width, height, depth;
-//
-//    Window() : position{ 0.0f, 0.0f }, width{ 1.0f }, height{ 1.5f }, depth{ 0.1f }
-//    {};
-//    float Area() const noexcept;
-//
-//};
+struct Aperture
+{
+    Vector2 center;
+    float width, height, depth;
+
+    Aperture() : center{ 0.5f, 0.5f }, width{ 1.0f }, height{ 1.5f }, depth{ 0.1f }
+    {};
+
+    std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3 wall_normal) const;
+
+
+};
 
 struct Skirting
 {
@@ -74,6 +69,8 @@ struct Wall
     std::vector<size_t> vertex_indices;
     const std::vector< Vector3>* room_vertices = nullptr;
     std::vector<Door> doors{};
+    std::vector<Aperture> windows;
+
     Skirting skirt_board;
 
     Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept;
@@ -104,6 +101,7 @@ struct Wall
     bool Facing_camera(const Vector3 camera_position) const;
     void Add_Paint(Paint& paint);
     void Try_Add_Door() noexcept;
+    void Try_add_Aperture() noexcept;
     void Draw_Area(const TextAnchor3D anchor) const;
     void Draw_Distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const;
     void Draw_outline(const Color color) const;

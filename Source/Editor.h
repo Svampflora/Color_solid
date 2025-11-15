@@ -16,8 +16,6 @@ class Editor : public State
 {
 	CameraController& camera_controller;
     Room& room;
-    Vector2 camera_angle = { 0.0f , 0.0f };
-    float camera_distance = 10.0f;
     Wall::Handle handle{};
     std::vector<Paint> paints;
     Paint* selected_paint = nullptr;

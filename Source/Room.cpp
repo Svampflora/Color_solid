@@ -73,14 +73,7 @@ float Door::Frame_width() const noexcept
     return width + architrave * 2;
 }
 
-//Window::Window()
-//{
-//}
-//
-//float Window::Area() const noexcept
-//{
-//    return width * height;
-//}
+
 
 Color Skirting::Get_color() const 
 {
@@ -345,6 +338,12 @@ void Wall::Try_Add_Door() noexcept
     doors.push_back(door);
 }
 
+void Wall::Try_add_Aperture() noexcept
+{
+
+    windows.push_back(Aperture());
+}
+
 void Wall::Draw_Area(const TextAnchor3D anchor) const
 {
     const Vector3 forward = Normal();
@@ -460,7 +459,46 @@ void Wall::Draw_skirting_outline(const Color color) const
 
 void Wall::Draw_filled() const
 {
-    DrawQuad(Wall_paint_quad(), paint_layers.front()->color);
+    const auto wall_vertices = Wall_paint_quad();
+    const Vector3 br = wall_vertices[0], bl = wall_vertices[1], tl = wall_vertices[2], tr = wall_vertices[3];
+
+    if (windows.empty())
+    {
+        DrawQuad(Wall_paint_quad(), paint_layers.front()->color);
+        return;
+    }
+
+    for (const Aperture& window : windows)
+    {
+        auto window_vertices = window.Quad(wall_vertices, Normal());
+        const Vector3 w_br = window_vertices[0], w_bl = window_vertices[1], w_tl = window_vertices[2], w_tr = window_vertices[3];
+
+
+        // Top 
+        DrawQuad({ tl,
+                   tr,
+                   w_tr,
+                   w_tl }, paint_layers.front()->color);
+
+         //Bottom 
+        DrawQuad({ br,
+                   bl,
+                   w_bl,
+                   w_br }, paint_layers.front()->color);
+
+        // Left
+        DrawQuad({ tl,
+                   w_tl,
+                   w_bl,
+                   bl }, paint_layers.front()->color);
+
+        // Right 
+        DrawQuad({ w_tr,
+                   tr,
+                   br,
+                   w_br}, paint_layers.front()->color);
+    }
+    
 }
 
 void Wall::Draw_skirting_filled() const
@@ -578,6 +616,8 @@ void Room::Generate_box_room(float width, float length, float height) noexcept
     walls.at(cieling_index).skirt_board.Set_height(0.0f); //TODO: demeter
 
     walls.at(0).Try_Add_Door();
+    walls.at(1).Try_add_Aperture();
+
 
 }
 
@@ -652,16 +692,33 @@ void Room::Draw_walls() const
     }
 }
 
-Paint::Paint()
-{
-    color = { 250, 150, 150, 255 };
-    coats = 2;
-    m2_per_liter = 10.0f;
-}
-
 Wall::Handle::Handle() :
     hovered{ false },
     selected{ false },
     wall{ nullptr },
     last_hit{ 0.0f, 0.0f, 0.0f }
 {}
+
+std::array<Vector3, 4> Aperture::Quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const
+{
+    const Vector3 forward = wall_normal;
+    const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
+    const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
+
+    const float wall_width = Vector3Distance(w.at(0), w.at(1));
+    const float wall_height = Vector3Distance(w.at(0), w.at(3));
+    const Vector3 aperture_center =
+        Vector3Add(w.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
+
+    const Vector3 mid_right = Vector3Scale(right, half_of(width));
+    const Vector3 mid_top = Vector3Scale(up, half_of(height));
+
+    return 
+    {
+        Vector3Subtract(aperture_center, Vector3Add(mid_right, mid_top)) ,     
+        Vector3Add(aperture_center, Vector3Subtract(mid_right, mid_top)),      
+        Vector3Add(aperture_center, Vector3Add(mid_right, mid_top)),            
+        Vector3Subtract(aperture_center, Vector3Subtract(mid_right, mid_top))
+    };
+}

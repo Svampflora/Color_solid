@@ -12,6 +12,6 @@ struct Paint
     size_t coats;
     float m2_per_liter;
 
-    Paint();
+    Paint(Color _color);
 
 };

@@ -4,9 +4,8 @@
 
 
 
-Paint::Paint()
-{
-    color = { 250, 150, 150, 255 };
-    coats = 2;
-    m2_per_liter = 10.0f;
-}
+Paint::Paint(Color _color) :
+    color(_color),
+    coats(2),
+    m2_per_liter(10.0f)
+{}

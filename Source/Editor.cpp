@@ -10,6 +10,20 @@
 #include "Utilities.h"
 #include "RayUtils.h"
 
+
+
+Editor::Editor(Room& roomRef, CameraController& camRef) :
+    room(roomRef),
+    camera_controller(camRef)
+{
+
+    paints.push_back(Paint({ 250, 150, 150, 255 }));
+    camera_controller.Set_birds_eye();
+    font = LoadFont("Assets/vcr-osd-mono.ttf");
+}
+
+
+
 Wall* Editor::Hovered_handle()
 {
     const Vector2 mouse = GetMousePosition();
@@ -75,58 +89,10 @@ const Wall* Editor::Hovered_wall() const
 void Editor::Edit()
 {
 
-    Wall* hovered_wall = Hovered_wall();
+    Paint_surface();
 
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_wall)
-    {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
-
-        if (selected_paint)
-        {
-            if (RayIntersectsSkirting(ray, *hovered_wall).hit)
-            {
-                hovered_wall->skirt_board.Add_Paint(*selected_paint);
-            }
-            else
-            {
-                hovered_wall->Add_paint(*selected_paint);
-
-            }
-        }
-    }
-
-
-    Wall* hovered_handle = Hovered_handle();
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_handle)
-    {
-        handle.wall = hovered_handle;
-        handle.last_hit = hovered_handle->Center();
-        handle.selected = true;
-    }
-    if (handle.selected && handle.wall)
-    {
-        const Vector3 wall_normal = handle.wall->Normal();
-        const Vector3 helper = (fabsf(wall_normal.y) > 0.9f)
-            ? Vector3{ 1, 0, 0 } : Vector3{ 0, 1, 0 };
-
-        const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
-        const Vector3 perp_plane_normal = sideways;
-        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
-        const float plane_d = Vector3DotProduct(perp_plane_normal, handle.wall->Center());
-        const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
-
-        if (hit.hit)
-        {
-            const Vector3 center = handle.wall->Center();
-            const Vector3 diff = Vector3Subtract(hit.point, center);
-            const float t = Vector3DotProduct(diff, wall_normal); // distance along axis
-            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, t));
-            const Vector3 move_delta = Vector3Subtract(line_position, handle.last_hit);
-            handle.last_hit = line_position;
-
-            room.Mirror_resize(*handle.wall, Vector3Negate(move_delta));
-        }
-    }
+    Drag_handles();
+    
 
     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
     {
@@ -134,7 +100,7 @@ void Editor::Edit()
     }
 }
 
-void Editor::Paint_selection() noexcept
+void Editor::Select_paint() noexcept
 {
     const Rectangle paint_menu{ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF(), 80, 80 };
 
@@ -157,14 +123,6 @@ void Editor::Paint_selection() noexcept
     }
 }
 
-Editor::Editor(Room& roomRef, CameraController& camRef) : 
-    room(roomRef), 
-    camera_controller(camRef)
-{
-    
-    paints.push_back(Paint());
-    camera_controller.Set_birds_eye();
-}
 
 std::unique_ptr<State> Editor::Update()
 {
@@ -175,7 +133,7 @@ std::unique_ptr<State> Editor::Update()
 
     camera_controller.Update();
     Edit();
-    Paint_selection();
+    Select_paint();
 
     return nullptr;
 }
@@ -214,6 +172,66 @@ void Editor::Draw_UI() const
     {
         DrawRectangleRoundedLines(paint_menu, 0.5f, 10, 20.0f, DARKGRAY);
 
+    }
+}
+
+void Editor::Drag_handles()
+{
+    Wall* hovered_handle = Hovered_handle();
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_handle)
+    {
+        handle.wall = hovered_handle;
+        handle.last_hit = hovered_handle->Center();
+        handle.selected = true;
+    }
+    if (handle.selected && handle.wall)
+    {
+        const Vector3 wall_normal = handle.wall->Normal();
+        const Vector3 helper = (fabsf(wall_normal.y) > 0.9f)
+            ? Vector3{ 1, 0, 0 } : Vector3{ 0, 1, 0 };
+
+        const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
+        const Vector3 perp_plane_normal = sideways;
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
+        const float plane_d = Vector3DotProduct(perp_plane_normal, handle.wall->Center());
+        const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
+
+        if (hit.hit)
+        {
+            const Vector3 center = handle.wall->Center();
+            const Vector3 diff = Vector3Subtract(hit.point, center);
+            const float t = Vector3DotProduct(diff, wall_normal); // distance along axis
+            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, t));
+            const Vector3 move_delta = Vector3Subtract(line_position, handle.last_hit);
+            handle.last_hit = line_position;
+
+            room.Mirror_resize(*handle.wall, Vector3Negate(move_delta));
+        }
+    }
+}
+
+void Editor::Paint_surface()
+{
+    Wall* hovered_wall = Hovered_wall();
+
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_wall)
+    {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
+
+        if (selected_paint)
+        {
+            RayCollision ray_collision = RayIntersectsSkirting(ray, *hovered_wall);
+
+            if (ray_collision.hit)
+            {
+                hovered_wall->skirt_board.Add_Paint(*selected_paint);
+            }
+            else
+            {
+                hovered_wall->Add_paint(*selected_paint);
+
+            }
+        }
     }
 }
 

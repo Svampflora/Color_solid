@@ -10,6 +10,7 @@
 #include "Room.h"
 #include "CameraController.h"
 
+
 struct Camera3D;
 
 class Editor : public State
@@ -19,6 +20,7 @@ class Editor : public State
     Wall::Handle handle{};
     std::vector<Paint> paints;
     Paint* selected_paint = nullptr;
+    Font font; 
 
     float min_size = 1.0f;
     float max_size = 10.0f;
@@ -34,6 +36,8 @@ private:
     Wall* Hovered_wall();
     const Wall* Hovered_wall() const;
     void Edit();
-    void Paint_selection() noexcept;
+    void Select_paint() noexcept;
+    void Paint_surface();
+    void Drag_handles();
     void Draw_UI() const;
 };

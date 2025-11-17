@@ -40,10 +40,10 @@ std::array<Vector3, 4> Aperture::Quad(const std::array<Vector3, 4>& w, const Vec
     const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
     const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
 
-    const float wall_width = Vector3Distance(w.at(0), w.at(1));
-    const float wall_height = Vector3Distance(w.at(0), w.at(3));
-    const Vector3 aperture_center =
-        Vector3Add(w.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
+    //const float wall_width = Vector3Distance(w.at(0), w.at(1));
+    //const float wall_height = Vector3Distance(w.at(0), w.at(3));
+    const Vector3 aperture_center = Center_position(w);
+        //Vector3Add(w.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
 
     const Vector3 mid_right = Vector3Scale(right, half_of(width));
     const Vector3 mid_top = Vector3Scale(up, half_of(height));
@@ -98,6 +98,8 @@ Door::Door(const float& _center, const float& wall_height) noexcept
     center = { _center,  half_of(height) / wall_height };
 }
 
+
+
 std::array<Vector3, 4> Door::Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const
 {
     const Vector3 forward = wall_normal;
@@ -116,6 +118,16 @@ std::array<Vector3, 4> Door::Frame_quad(const std::array<Vector3, 4>& w, const V
     return{ p0, p1, p2, p3 };
 }
 
+Vector3 Door::Center_position(const std::array<Vector3, 4>& wall_quad) const
+{
+    const Vector3 right = Vector3Normalize(Vector3Subtract(wall_quad[1], wall_quad[0]));
+    const Vector3 up = Vector3Normalize(Vector3Subtract(wall_quad[3], wall_quad[0]));
+    const float wall_width = Vector3Distance(wall_quad[0], wall_quad[1]);
+    //const float wall_height = Vector3Distance(wall_quad[0], wall_quad[3]);
+
+    return Vector3Add(wall_quad.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (half_of(height)))));
+}
+
 float Door::Frame_height() const noexcept
 {
     return height + architrave;
@@ -125,6 +137,7 @@ float Door::Frame_width() const noexcept
 {
     return width + architrave * 2;
 }
+
 
 void Door::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const
 {
@@ -488,7 +501,18 @@ void Wall::Draw_outline(const Color color) const
     DrawPolygonLinesEx3D(Vertices(), color);
 }
 
-void Wall::Draw_doors_outline(const Color color) const 
+Vector3 Wall::Position(const Vector2& normalized_coordinate) const
+{
+    const std::array<Vector3, 4> quad = Quad();
+    const Vector3 right = Vector3Normalize(Vector3Subtract(quad[1], quad[0]));
+    const Vector3 up = Vector3Normalize(Vector3Subtract(quad[3], quad[0]));
+    const float wall_width = Vector3Distance(quad[0], quad[1]);
+    const float wall_height = Vector3Distance(quad[0], quad[3]);
+
+    return Vector3Add(quad.at(0), Vector3Add(Vector3Scale(right, (normalized_coordinate.x * wall_width)), Vector3Scale(up, (normalized_coordinate.y * wall_height))));
+}
+
+void Wall::Draw_doors_outline(const Color color) const
 {
     if (doors.empty())
     {

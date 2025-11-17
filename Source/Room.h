@@ -23,7 +23,7 @@ struct Aperture
     {};
 
     std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3 wall_normal) const;
-    Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
+    virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     float Area() const noexcept;
     float Height() const noexcept;
     float Width() const noexcept;
@@ -38,6 +38,7 @@ struct Door : public Aperture
     Door(const float& _center, const float& wall_height) noexcept;
 
     std::array<Vector3, 4> Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const;
+    Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const override;
 
     float Frame_height() const noexcept;
     float Frame_width() const noexcept;
@@ -83,6 +84,7 @@ struct Wall
     std::array<Vector3, 4> Quad() const;
     std::array<Vector3, 3> Triangle() const;
     Vector3 Center() const;
+    Vector3 Position(const Vector2& normalized_coordinate) const;
     Vector3 Normal() const;
     Vector3 Floor_edge() const;
     const Vector3& Vertex(size_t i) const;

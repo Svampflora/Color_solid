@@ -37,7 +37,19 @@ void DrawRectangleLinesEx3D(Vector3 center, Vector2 size, Vector3 normal, float 
 void DrawPolygonLinesEx3D(const std::vector<Vector3>& points, Color color);
 void DrawQuadLinesEx3D(const std::array<Vector3, 4>& points, Color color);
 void DrawTriangleFan3D(const std::vector<Vector3>& points, Color color);
+void DrawCubeWires3D(Vector3 position, float width, float height, float depth, Color tint, const Matrix& rotation);
+
 
 Vector3 PolygonNormal(const std::vector<Vector3>& vertices);
 float PolygonArea(const std::vector<Vector3>& vertices);
 const char* FormatMeasurement(float meters) noexcept;
+
+namespace debugging_tools
+{
+    void DrawVertexOrder(const std::array<Vector3, 4>& w, const Vector3 normal);
+
+    //DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(right, 1.0f)), RED);
+//DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(up, 1.0f)), BLUE);
+//DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(forward, 1.0f)), GREEN);
+
+}

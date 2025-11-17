@@ -275,9 +275,46 @@ void DrawAnchoredText3D(Font font, const char* text, Vector3 position, float fon
     rlRotatef(yaw, 0, 0, 1);    // Z 
 
 
-    Vector3 offset = GetAnchoredTextOffset3D(font, text, fontSize, anchor);
+    const Vector3 offset = GetAnchoredTextOffset3D(font, text, fontSize, anchor);
     DrawText3D(font, text, offset, fontSize, fontSpacing, fontSize, backface, tint);
 
+    //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_right, 0.5f)), RED);
+    //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_up, 0.5f)), BLUE);
+    //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_forward, 0.5f)), GREEN);
+
+    rlPopMatrix();
+}
+
+void DrawCubeWires3D(Vector3 position, float width, float height, float depth, Color tint, const Matrix& rotation)
+{
+    const Vector3 default_forward = { 0.0f, 1.0f, 0.0f };
+    const Vector3 default_up = { 0.0f, 0.0f, -1.0f };
+    const Vector3 default_right = Vector3Normalize(Vector3CrossProduct(default_up, default_forward));
+
+    const Matrix default_rotation =
+    {
+        default_right.x, default_up.x, default_forward.x, 0,
+        default_right.y, default_up.y, default_forward.y, 0,
+        default_right.z, default_up.z, default_forward.z, 0,
+        0, 0, 0, 1
+    };
+
+    float yaw, pitch, roll;
+    MatrixToEulerZYX(rotation, yaw, pitch, roll);
+
+    rlPushMatrix();
+    rlTranslatef(position.x, position.y, position.z);
+
+    if (!Vector3Equals({ rotation.m8, rotation.m9,rotation.m10 }, { 0.0f,1.0f,0.0f }))
+    {
+        roll += 90.0f;     // TODO: quick fix
+    }
+    rlRotatef(roll, 1, 0, 0);   // X 
+    rlRotatef(pitch, 0, 1, 0);  // Y
+    rlRotatef(yaw, 0, 0, 1);    // Z 
+
+
+    DrawCubeWires(position, width, height, depth, tint);
     //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_right, 0.5f)), RED);
     //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_up, 0.5f)), BLUE);
     //DrawLine3D(offset, Vector3Add(offset, Vector3Scale(default_text_forward, 0.5f)), GREEN);
@@ -424,4 +461,36 @@ inline const char* FormatMeasurement(float meters) noexcept
     return (meters >= 1.0f)
         ? TextFormat("%.1f M", meters)
         : TextFormat("%.0f CM", meters * 100.0f);
+}
+
+void debugging_tools::DrawVertexOrder(const std::array<Vector3, 4>& w, const Vector3 normal)
+{
+
+    const Vector3 forward = Vector3Negate(normal);
+    const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
+    const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
+    const Matrix rotation =
+    {
+        right.x, up.x, forward.x, 0,
+        right.y, up.y, forward.y, 0,
+        right.z, up.z, forward.z, 0,
+        0,       0,    0,         1
+    };
+    for (int i = 0; i < w.size(); i++)
+    {
+        DrawCircle3D(w.at(i), 0.1f, Vector3Zero(), 0, BLUE);
+        DrawAnchoredText3D
+        (
+            GetFontDefault(),
+            TextFormat("%i", i),
+            w.at(i),
+            0.2f, 0.1f,
+            false,
+            RED,
+            TextAnchor3D::Center,
+            rotation
+        );
+    }
+    
 }

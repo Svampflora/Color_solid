@@ -89,7 +89,7 @@ void Editor::Edit()
             }
             else
             {
-                hovered_wall->Add_Paint(*selected_paint);
+                hovered_wall->Add_paint(*selected_paint);
 
             }
         }

@@ -12,34 +12,36 @@ struct Ray;
 
 
 
-struct Door
-{
-    float wall_location; //TODO: only stored here for convinience; door does not need to know where it is
-    float width, height, architrave;
-
-    Door(const float& _wall_location) noexcept;
-
-    std::array<Vector3, 4> Quad(const Vector3& wall_normal, const Vector3& bottom_center) const;
-    std::array<Vector3, 4> Frame_quad(const Vector3& wall_normal, const Vector3& bottom_center) const;
-    float Area() const noexcept;
-    float Height() const noexcept;
-    float Width() const noexcept;
-    float Frame_height() const noexcept;
-    float Frame_width() const noexcept;
-
-};
 
 struct Aperture
 {
     Vector2 center;
     float width, height, depth;
 
-    Aperture() : center{ 0.5f, 0.5f }, width{ 1.0f }, height{ 1.5f }, depth{ 0.1f }
+    Aperture() = default;
+    Aperture(const Vector2& _center) noexcept : center{ _center }, width{ 1.0f }, height{ 1.5f }, depth{ 0.1f }
     {};
 
     std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3 wall_normal) const;
+    Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
+    float Area() const noexcept;
+    float Height() const noexcept;
+    float Width() const noexcept;
+    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 
+};
 
+struct Door : public Aperture
+{
+    float architrave;
+
+    Door(const float& _center, const float& wall_height) noexcept;
+
+    std::array<Vector3, 4> Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const;
+
+    float Frame_height() const noexcept;
+    float Frame_width() const noexcept;
+    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 };
 
 struct Skirting
@@ -76,14 +78,6 @@ struct Wall
     Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept;
 
     std::vector<Vector3> Vertices() const;
-    //std::vector<Vector3> Wall_paint_polygon() const
-    //{
-    //    std::array<Vector3, 4> skirting_quad = Skirting_quad();
-    //    std::array<Vector3, 4> wall_quad = Quad();
-    //    wall_quad.at(0) = skirting_quad.at(3);
-    //    wall_quad.at(1) = skirting_quad.at(2);
-    //    return wall_quad;
-    //}
     std::array<Vector3, 4> Wall_paint_quad() const;
     std::array<Vector3, 4> Skirting_quad() const;
     std::array<Vector3, 4> Quad() const;
@@ -99,13 +93,14 @@ struct Wall
     float Skirting_area() const;
     float Liters_of(const Paint* target) const;
     bool Facing_camera(const Vector3 camera_position) const;
-    void Add_Paint(Paint& paint);
-    void Try_Add_Door() noexcept;
-    void Try_add_Aperture() noexcept;
-    void Draw_Area(const TextAnchor3D anchor) const;
-    void Draw_Distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const;
+    void Add_paint(Paint& paint);
+    void Try_add_door();
+    void Try_add_aperture() noexcept;
+    void Draw_area(const TextAnchor3D anchor) const;
+    void Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const;
     void Draw_outline(const Color color) const;
     void Draw_doors_outline(const Color color) const;
+    void Draw_apertures_outline(const Color& color) const;
     void Draw_skirting_outline(const Color color) const;
     void Draw_filled() const;
     void Draw_skirting_filled() const;

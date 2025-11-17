@@ -4,63 +4,116 @@
 #pragma warning(push)
 #pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
 #include "raymath.h"
+#include "rlgl.h"
 #pragma warning(pop)
 
 #include "RayUtils.h"
 #include "Utilities.h"
 #include <format>
+#include <string>
 
-Door::Door(const float& _wall_location) noexcept
-{
-    width = 1.0f,
-        height = 2.0f,
-        architrave = 0.05f;
-    wall_location = _wall_location;
-}
 
-std::array<Vector3, 4> Door::Quad(const Vector3& wall_normal, const Vector3& bottom_center) const
-{
-    constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
 
-    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, wall_normal));
-    const Vector3 up = Vector3Normalize(world_up);
 
-    const Vector3 p0 = Vector3Subtract(bottom_center, Vector3Scale(right, half_of(width)));     // bottom left
-    const Vector3 p1 = Vector3Add(bottom_center, Vector3Scale(right, half_of(width)));           // bottom right
-    const Vector3 p2 = Vector3Add(p1, Vector3Scale(up, height));                               // top right
-    const Vector3 p3 = Vector3Add(p0, Vector3Scale(up, height));                               // top left
 
-    return{ p0, p1, p2, p3 };
-}
+// === Aperture ===
 
-std::array<Vector3, 4> Door::Frame_quad(const Vector3& wall_normal, const Vector3& bottom_center) const
-{
-    constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
-
-    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, wall_normal));
-    const Vector3 up = Vector3Normalize(world_up);
-
-    const Vector3 p0 = Vector3Subtract(bottom_center, Vector3Scale(right, half_of(Frame_width())));     // bottom left
-    const Vector3 p1 = Vector3Add(bottom_center, Vector3Scale(right, half_of(Frame_width())));           // bottom right
-    const Vector3 p2 = Vector3Add(p1, Vector3Scale(up, Frame_height()));                               // top right
-    const Vector3 p3 = Vector3Add(p0, Vector3Scale(up, Frame_height()));                               // top left
-
-    return{ p0, p1, p2, p3 };
-}
-
-float Door::Area() const noexcept
+float Aperture::Area() const noexcept
 {
     return width * height;
 }
 
-float Door::Height() const noexcept
+float Aperture::Height() const noexcept
 {
     return height;
 }
 
-float Door::Width() const noexcept
+float Aperture::Width() const noexcept
 {
     return width;
+}
+
+std::array<Vector3, 4> Aperture::Quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const
+{
+    const Vector3 forward = wall_normal;
+    const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
+    const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
+
+    const float wall_width = Vector3Distance(w.at(0), w.at(1));
+    const float wall_height = Vector3Distance(w.at(0), w.at(3));
+    const Vector3 aperture_center =
+        Vector3Add(w.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
+
+    const Vector3 mid_right = Vector3Scale(right, half_of(width));
+    const Vector3 mid_top = Vector3Scale(up, half_of(height));
+
+    return
+    {
+        Vector3Subtract(aperture_center, Vector3Add(mid_right, mid_top)) ,
+        Vector3Add(aperture_center, Vector3Subtract(mid_right, mid_top)),
+        Vector3Add(aperture_center, Vector3Add(mid_right, mid_top)),
+        Vector3Subtract(aperture_center, Vector3Subtract(mid_right, mid_top))
+    };
+}
+
+Vector3 Aperture::Center_position(const std::array<Vector3, 4>& wall_quad) const
+{
+    const Vector3 right = Vector3Normalize(Vector3Subtract(wall_quad[1], wall_quad[0]));
+    const Vector3 up = Vector3Normalize(Vector3Subtract(wall_quad[3], wall_quad[0]));
+    const float wall_width = Vector3Distance(wall_quad[0], wall_quad[1]);
+    const float wall_height = Vector3Distance(wall_quad[0], wall_quad[3]);
+
+    return Vector3Add(wall_quad.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
+}
+
+void Aperture::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const
+{
+    auto window_vertices = Quad(wall_quad, wall_normal);
+    const Vector3 w_br = window_vertices[0], w_bl = window_vertices[1], w_tl = window_vertices[2], w_tr = window_vertices[3];
+
+    const Vector3 away{ Vector3Scale(Vector3Negate(wall_normal), depth) };
+    const Vector3 w_br_away = Vector3Add(w_br, away), w_bl_away = Vector3Add(w_bl, away), w_tl_away = Vector3Add(w_tl, away), w_tr_away = Vector3Add(w_tr, away);
+
+    //left plane
+    DrawQuadLinesEx3D({ w_bl, w_tl, w_tl_away, w_bl_away }, color);
+
+    //bottom plane
+    DrawQuadLinesEx3D({ w_bl, w_bl_away, w_br_away, w_br }, color);
+
+    //top plane
+    DrawQuadLinesEx3D({ w_tl_away, w_tl, w_tr, w_tr_away }, color);
+
+    //right plane
+    DrawQuadLinesEx3D({ w_br_away, w_tr_away, w_tr, w_br }, color);
+}
+
+// === DOOR ===
+
+Door::Door(const float& _center, const float& wall_height) noexcept
+{
+    width = 1.0f;
+    height=2.0f;
+    architrave = 0.05f;
+    center = { _center,  half_of(height) / wall_height };
+}
+
+std::array<Vector3, 4> Door::Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const
+{
+    const Vector3 forward = wall_normal;
+    constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
+    const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
+
+    const std::array<Vector3, 4>& door_quad = Quad(w, wall_normal);
+
+    const Vector3 p0 = Vector3Add(door_quad.at(0), Vector3Scale(Vector3Negate(right), architrave));          // bottom left
+    const Vector3 p1 = Vector3Add(door_quad.at(1), Vector3Scale(right, architrave));                         // bottom right
+    const Vector3 p2 = Vector3Add(p1, Vector3Scale(up, Frame_height()));                                     // top right
+    const Vector3 p3 = Vector3Add(p0, Vector3Scale(up, Frame_height()));                                     // top left 
+
+
+    return{ p0, p1, p2, p3 };
 }
 
 float Door::Frame_height() const noexcept
@@ -73,7 +126,20 @@ float Door::Frame_width() const noexcept
     return width + architrave * 2;
 }
 
+void Door::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const
+{
 
+    auto door_vertices = Quad(wall_quad, wall_normal);
+    const Vector3 w_br = door_vertices.at(0), w_bl = door_vertices.at(1), w_tl = door_vertices.at(2), w_tr = door_vertices.at(3);
+
+    DrawQuadLinesEx3D(door_vertices, color);
+    DrawQuadLinesEx3D(Frame_quad(wall_quad, wall_normal), color);
+}
+
+
+
+
+// === SKIRTING ===
 
 Color Skirting::Get_color() const 
 {
@@ -99,9 +165,21 @@ void Skirting::Set_height(const float& new_height) noexcept
     height = new_height;
 }
 
+
+
+
+// === WALL ===
+
 Wall::Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept :
     vertex_indices(indices),
     room_vertices(corners_ptr)
+{}
+
+Wall::Handle::Handle() :
+    hovered{ false },
+    selected{ false },
+    wall{ nullptr },
+    last_hit{ 0.0f, 0.0f, 0.0f }
 {}
 
 std::vector<Vector3> Wall::Vertices() const
@@ -313,47 +391,40 @@ bool Wall::Facing_camera(const Vector3 camera_position) const
     return dot > 0.0f;
 }
 
-void Wall::Add_Paint(Paint& paint)
+void Wall::Add_paint(Paint& paint)
 {
     paint_layers.push_back(&paint);
 }
 
-void Wall::Try_Add_Door() noexcept
+void Wall::Try_add_door() 
 {
-    float total_door_width = 1.0f; //TODO: magic prediction of door.width
-    for (const auto& door : doors)
+
+    const Door door(0.5f, Height());
+    float total_door_width = door.Frame_width();
+    for (const auto& _door : doors)
     {
-        total_door_width += door.Frame_width();
+        total_door_width += _door.Frame_width();
     }
-    if (total_door_width >= Length()) //TODO: Floor_edge.magnitude == Length()?
+    if (total_door_width >= Length()) //TODO: make function Availible_edge_space(); take mouse position into account
     {
         return;
     }
 
-
-    //const Vector3 floor_direction = Vector3Normalize(Floor_edge());
-
-    const Door door(0.5f);
-    //TODO: squeeze in door where possible
+    //TODO: squeeze in door if possible
     doors.push_back(door);
 }
 
-void Wall::Try_add_Aperture() noexcept
+void Wall::Try_add_aperture() noexcept
 {
-
-    windows.push_back(Aperture());
+    windows.push_back(Aperture({0.5f, 0.5f}));
 }
 
-void Wall::Draw_Area(const TextAnchor3D anchor) const
+void Wall::Draw_area(const TextAnchor3D anchor) const
 {
     const Vector3 forward = Normal();
     const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
     const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
     const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
-
-    //DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(right, 1.0f)), RED);
-    //DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(up, 1.0f)), BLUE);
-    //DrawLine3D(Center(), Vector3Add(Center(), Vector3Scale(forward, 1.0f)), GREEN);
 
     const Matrix rotation =
     {
@@ -379,7 +450,7 @@ void Wall::Draw_Area(const TextAnchor3D anchor) const
     );
 }
 
-void Wall::Draw_Distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const
+void Wall::Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const
 {
     //DrawLine3D(a, b, color);
     const Vector3 mid_point = Vector3Scale(Vector3Add(a, b), 0.5f);
@@ -414,55 +485,52 @@ void Wall::Draw_Distance(const Vector3& a, const Vector3& b, const Color& color,
 
 void Wall::Draw_outline(const Color color) const
 {
-
-
     DrawPolygonLinesEx3D(Vertices(), color);
-
-    //Draw_Area(TextAnchor3D::Center);
-    //Draw_Distance(Vertex(0), Vertex(1), color, TextAnchor3D::TopCenter);
-    //Draw_Distance(Vertex(0), Vertex(3), color, TextAnchor3D::MiddleLeft);
-
-
-    //std::array<Vector3, 4> arr = Skirting_quad();
-    //std::vector <Vector3> vec(arr.begin(), arr.end());
-    //DrawPolygonLinesEx3D(vec, skirt_board.Get_color());
-
 }
 
-void Wall::Draw_doors_outline(const Color color) const
+void Wall::Draw_doors_outline(const Color color) const 
 {
     if (doors.empty())
     {
         return;
     }
 
-    const Vector3 floor_direction = Vector3Normalize(Floor_edge());
-    for (int i = 0; i < doors.size(); i++)
+    for (auto& door : doors)
     {
-        const float door_location = 1.0f / (i + 2);
-        const float corner_to_door = door_location * Length();
-        const Vector3 door_position = Vector3Add(Vertex(0), Vector3Scale(floor_direction, corner_to_door));
+        door.Draw(Quad(), Normal(), color);
+    }
+}
 
-        DrawQuadLinesEx3D(doors.at(i).Frame_quad(Normal(), door_position), color);
-        DrawQuadLinesEx3D(doors.at(i).Quad(Normal(), door_position), color);
+void Wall::Draw_apertures_outline(const Color& color) const
+{
+    if (windows.empty())
+    {
+        return;
+    }
+
+    for (auto& window : windows)
+    {
+        window.Draw(Wall_paint_quad(), Normal(), color);
     }
 }
 
 void Wall::Draw_skirting_outline(const Color color) const
 {
 
+
     std::array<Vector3, 4> arr = Skirting_quad();
     std::vector <Vector3> vec(arr.begin(), arr.end());
     DrawPolygonLinesEx3D(vec, color);
+    debugging_tools::DrawVertexOrder(arr, Normal());
 
 }
 
 void Wall::Draw_filled() const
 {
     const auto wall_vertices = Wall_paint_quad();
-    const Vector3 br = wall_vertices[0], bl = wall_vertices[1], tl = wall_vertices[2], tr = wall_vertices[3];
+    const Vector3 br = wall_vertices.at(0), bl = wall_vertices.at(1), tl = wall_vertices.at(2), tr = wall_vertices.at(3);
 
-    if (windows.empty())
+    if (windows.empty() && doors.empty())
     {
         DrawQuad(Wall_paint_quad(), paint_layers.front()->color);
         return;
@@ -471,7 +539,7 @@ void Wall::Draw_filled() const
     for (const Aperture& window : windows)
     {
         auto window_vertices = window.Quad(wall_vertices, Normal());
-        const Vector3 w_br = window_vertices[0], w_bl = window_vertices[1], w_tl = window_vertices[2], w_tr = window_vertices[3];
+        const Vector3 w_br = window_vertices.at(0), w_bl = window_vertices.at(1), w_tl = window_vertices.at(2), w_tr = window_vertices.at(3);
 
 
         // Top 
@@ -480,7 +548,7 @@ void Wall::Draw_filled() const
                    w_tr,
                    w_tl }, paint_layers.front()->color);
 
-         //Bottom 
+        // Bottom 
         DrawQuad({ br,
                    bl,
                    w_bl,
@@ -497,8 +565,45 @@ void Wall::Draw_filled() const
                    tr,
                    br,
                    w_br}, paint_layers.front()->color);
+
+
     }
-    
+
+    constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, Normal()));
+    const Vector3 up = Vector3Normalize(Vector3CrossProduct(Normal(), right));
+
+    //br = Vector3Add(br, Vector3Scale(up, skirt_board.height));
+    //bl = Vector3Add(bl, Vector3Scale(up, skirt_board.height));
+
+    for (const auto& door : doors)
+    {
+        auto door_vertices = door.Frame_quad(Quad(), Normal());
+        Vector3 d_br = door_vertices.at(0), d_bl = door_vertices.at(1), d_tl = door_vertices.at(2), d_tr = door_vertices.at(3);
+
+        d_br = Vector3Add(d_br, Vector3Scale(up, skirt_board.height));
+        d_bl = Vector3Add(d_bl, Vector3Scale(up, skirt_board.height));
+
+        // Top 
+        DrawQuad({ tl,
+                   tr,
+                   d_tr,
+                   d_tl }, paint_layers.front()->color);
+
+        // Left
+        DrawQuad({ tl,
+                   d_tl,
+                   d_bl,
+                   bl }, paint_layers.front()->color);
+
+        // Right 
+        DrawQuad({ d_tr,
+                   tr,
+                   br,
+                   d_br }, paint_layers.front()->color);
+
+
+    }
 }
 
 void Wall::Draw_skirting_filled() const
@@ -535,9 +640,9 @@ void Wall::Draw() const
     }
 
     Draw_outline(WHITE);
-    Draw_Area(TextAnchor3D::Center);
-    Draw_Distance(Vertex(0), Vertex(1), text_color, TextAnchor3D::TopCenter);
-    Draw_Distance(Vertex(0), Vertex(3), text_color, TextAnchor3D::MiddleLeft);
+    Draw_area(TextAnchor3D::Center);
+    Draw_distance(Vertex(0), Vertex(1), text_color, TextAnchor3D::TopCenter);
+    Draw_distance(Vertex(0), Vertex(3), text_color, TextAnchor3D::MiddleLeft);
 
     if (skirt_board.Is_painted())
     {
@@ -552,9 +657,16 @@ void Wall::Draw() const
     {
         Draw_doors_outline(WHITE);
     }
+
+    if (!windows.empty())
+    {
+        Draw_apertures_outline(WHITE);
+    }
 }
 
-RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall)
+
+
+RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall) //TODO: find home
 {
     const std::array<Vector3, 4> quad = wall.Quad();
 
@@ -566,7 +678,7 @@ RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall)
     return GetRayCollisionQuad(ray, p0, p1, p2, p3);
 }
 
-RayCollision RayIntersectsSkirting(const Ray& ray, const Wall& wall)
+RayCollision RayIntersectsSkirting(const Ray& ray, const Wall& wall) //TODO: copy
 {
     const std::array<Vector3, 4> quad = wall.Skirting_quad();
 
@@ -577,6 +689,9 @@ RayCollision RayIntersectsSkirting(const Ray& ray, const Wall& wall)
 
     return GetRayCollisionQuad(ray, p0, p1, p2, p3);
 }
+
+
+// === ROOM ===
 
 Room::Room() noexcept
 {
@@ -615,8 +730,8 @@ void Room::Generate_box_room(float width, float length, float height) noexcept
     cieling_index = walls.size() - 1;
     walls.at(cieling_index).skirt_board.Set_height(0.0f); //TODO: demeter
 
-    walls.at(0).Try_Add_Door();
-    walls.at(1).Try_add_Aperture();
+    walls.at(0).Try_add_door();
+    walls.at(1).Try_add_aperture();
 
 
 }
@@ -678,7 +793,7 @@ void Room::Draw_walls() const
         {
             walls.at(i).Draw_filled(DARKGRAY);
 
-            walls.at(i).Draw_Area(TextAnchor3D::Center);
+            walls.at(i).Draw_area(TextAnchor3D::Center);
         }
         else if (i == cieling_index)
         {
@@ -692,33 +807,7 @@ void Room::Draw_walls() const
     }
 }
 
-Wall::Handle::Handle() :
-    hovered{ false },
-    selected{ false },
-    wall{ nullptr },
-    last_hit{ 0.0f, 0.0f, 0.0f }
-{}
 
-std::array<Vector3, 4> Aperture::Quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const
-{
-    const Vector3 forward = wall_normal;
-    const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
-    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
-    const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
 
-    const float wall_width = Vector3Distance(w.at(0), w.at(1));
-    const float wall_height = Vector3Distance(w.at(0), w.at(3));
-    const Vector3 aperture_center =
-        Vector3Add(w.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
 
-    const Vector3 mid_right = Vector3Scale(right, half_of(width));
-    const Vector3 mid_top = Vector3Scale(up, half_of(height));
 
-    return 
-    {
-        Vector3Subtract(aperture_center, Vector3Add(mid_right, mid_top)) ,     
-        Vector3Add(aperture_center, Vector3Subtract(mid_right, mid_top)),      
-        Vector3Add(aperture_center, Vector3Add(mid_right, mid_top)),            
-        Vector3Subtract(aperture_center, Vector3Subtract(mid_right, mid_top))
-    };
-}

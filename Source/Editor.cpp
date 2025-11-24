@@ -93,10 +93,23 @@ void Editor::Edit()
 
     Drag_handles();
     
-
     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
     {
-        handle = Wall::Handle{};
+        handle.selected = false;
+    }
+}
+
+
+void Editor::Wall_handle()
+{
+    handle = Handle{};
+    if (Wall* w = Hovered_handle())
+    {
+        handle.Position = [w]() { return w->Center(); };
+        handle.Normal = [w]() { return w->Normal(); };
+        handle.on_drag = [this,w](auto d) { room.Mirror_resize(w->Normal(), d); };
+        handle.last_hit = handle.Position();
+
     }
 }
 
@@ -159,6 +172,17 @@ void Editor::Draw_UI() const
         }
     }
 
+    if (handle.Active())
+    {
+        if (handle.Hovered(camera_controller.camera) || handle.selected)
+        {
+            DrawCircleV(GetWorldToScreen(handle.Position(), camera_controller.camera), radius, PINK);
+
+        }
+
+    }
+
+
     const Rectangle paint_menu{ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF(), 80, 80 };
     for (const auto& paint : paints)
     {
@@ -177,35 +201,40 @@ void Editor::Draw_UI() const
 
 void Editor::Drag_handles()
 {
-    Wall* hovered_handle = Hovered_handle();
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered_handle)
+
+    if (Hovered_handle())
     {
-        handle.wall = hovered_handle;
-        handle.last_hit = hovered_handle->Center();
-        handle.selected = true;
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
+            Wall_handle();
+
+            handle.selected = true;
+        }
     }
-    if (handle.selected && handle.wall)
+
+    
+    if (handle.selected)
     {
-        const Vector3 wall_normal = handle.wall->Normal();
+        const Vector3 wall_normal = handle.Normal();
         const Vector3 helper = (fabsf(wall_normal.y) > 0.9f)
             ? Vector3{ 1, 0, 0 } : Vector3{ 0, 1, 0 };
 
         const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
         const Vector3 perp_plane_normal = sideways;
         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
-        const float plane_d = Vector3DotProduct(perp_plane_normal, handle.wall->Center());
+        const float plane_d = Vector3DotProduct(perp_plane_normal, handle.Position());
         const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
 
         if (hit.hit)
         {
-            const Vector3 center = handle.wall->Center();
+            const Vector3 center = handle.Position();
             const Vector3 diff = Vector3Subtract(hit.point, center);
-            const float t = Vector3DotProduct(diff, wall_normal); // distance along axis
-            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, t));
+            const float distance_along_axis = Vector3DotProduct(diff, wall_normal); 
+            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, distance_along_axis));
             const Vector3 move_delta = Vector3Subtract(line_position, handle.last_hit);
             handle.last_hit = line_position;
 
-            room.Mirror_resize(*handle.wall, Vector3Negate(move_delta));
+            handle.on_drag(Vector3Negate(move_delta));
         }
     }
 }
@@ -220,7 +249,7 @@ void Editor::Paint_surface()
 
         if (selected_paint)
         {
-            RayCollision ray_collision = RayIntersectsSkirting(ray, *hovered_wall);
+            const RayCollision ray_collision = RayIntersectsSkirting(ray, *hovered_wall);
 
             if (ray_collision.hit)
             {

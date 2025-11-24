@@ -3,22 +3,68 @@
 #include "Paint.h"
 #include <array>
 #include <vector>
+#include <functional>
+
 
 struct Vector3;
 struct Color;
 struct RayCollision;
 struct Ray;
 
+struct Handle
+{
+    Vector3 last_hit;
+    bool selected;
 
 
+    Handle()
+    {
+        last_hit = { 0.0f,0.0f,0.0f };
+        selected = false;
+    }
 
+    std::function<Vector3()> Position;
+    std::function<Vector3()> Normal;
+
+    std::function<void(const Vector3& delta)> on_drag;
+
+    bool Active() const noexcept
+    {
+        return Position && Normal;
+    }
+
+    bool Hovered(const Camera& camera) const noexcept;
+
+};
+
+struct Object
+{
+    Vector3 center;
+    float width, height, depth;
+
+    Object() noexcept
+    {
+        center = {0.0f, 0.0f, 0.0f};
+        width = 0.0f;
+        height = 0.0f;
+        depth = 0.0f;
+
+    }
+};
 
 struct Aperture
 {
     Vector2 center;
     float width, height, depth;
 
-    Aperture() = default;
+    Aperture() noexcept
+    {
+        center = { 0.0f, 0.0f };
+        width = 0.0f;
+        height = 0.0f;
+        depth = 0.0f;
+    }
+    
     Aperture(const Vector2& _center) noexcept : center{ _center }, width{ 1.0f }, height{ 1.5f }, depth{ 0.1f }
     {};
 
@@ -42,6 +88,7 @@ struct Door : public Aperture
 
     float Frame_height() const noexcept;
     float Frame_width() const noexcept;
+    //TODO:: float Frame_area() const noexcept;
     void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 };
 
@@ -52,6 +99,7 @@ struct Skirting
 
     Color Get_color() const;
 
+    //TODO:: float Area() const noexcept;
     bool Is_painted() const noexcept;
     void Add_Paint(Paint& paint);
     void Set_height(const float& new_height) noexcept;
@@ -59,15 +107,6 @@ struct Skirting
 
 struct Wall
 {
-    struct Handle
-    {
-        bool hovered;
-        bool selected;
-        Wall* wall;
-        Vector3 last_hit;
-
-        Handle();
-    };
     std::vector<Paint*> paint_layers;
     std::vector<size_t> vertex_indices;
     const std::vector< Vector3>* room_vertices = nullptr;
@@ -104,9 +143,9 @@ struct Wall
     void Draw_doors_outline(const Color color) const;
     void Draw_apertures_outline(const Color& color) const;
     void Draw_skirting_outline(const Color color) const;
-    void Draw_filled() const;
     void Draw_skirting_filled() const;
     void Draw_skirting_filled(const Color& _color) const;
+    void Draw_filled() const;
     void Draw_filled(const Color& default_color) const;
     void Draw() const;
 };
@@ -124,13 +163,12 @@ struct Room
     size_t floor_index;
     size_t cieling_index;
 
-
     Room() noexcept;
 
-    void Generate_box_room(float width, float length, float height) noexcept;
     float Total_wall_paint_area() const noexcept;
     float Selected_wall_area() const;
+    void Generate_box_room(float width, float length, float height) noexcept;
     float Liters_of(const Paint* target) const;
-    void Mirror_resize(const Wall& dragged_wall, const Vector3& move_delta);
+    void Mirror_resize(const Vector3& direction, const Vector3& move_delta);
     void Draw_walls() const;
 };

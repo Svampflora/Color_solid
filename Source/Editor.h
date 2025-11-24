@@ -10,14 +10,15 @@
 #include "Room.h"
 #include "CameraController.h"
 
-
 struct Camera3D;
+
+
 
 class Editor : public State
 {
 	CameraController& camera_controller;
     Room& room;
-    Wall::Handle handle{};
+    Handle handle;
     std::vector<Paint> paints;
     Paint* selected_paint = nullptr;
     Font font; 
@@ -35,7 +36,9 @@ private:
     Wall* Hovered_handle();
     Wall* Hovered_wall();
     const Wall* Hovered_wall() const;
+    void Wall_handle();
     void Edit();
+    void Select_handle();
     void Select_paint() noexcept;
     void Paint_surface();
     void Drag_handles();

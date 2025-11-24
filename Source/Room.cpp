@@ -13,8 +13,23 @@
 #include <string>
 
 
-
-
+bool Handle::Hovered(const Camera& camera) const noexcept
+{
+    if (!Active())
+    {
+        return false;
+    }
+    const Vector2 mouse = GetMousePosition();
+    constexpr float radius = 10.0f;
+    float range = radius * radius;
+    const Vector2 screen_position = GetWorldToScreen(Position(), camera);
+    const float distance = Vector2DistanceSqr(mouse, screen_position);
+    if (distance > range)
+    {
+        return false;
+    }
+    return true;
+}
 
 // === Aperture ===
 
@@ -188,12 +203,12 @@ Wall::Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corne
     room_vertices(corners_ptr)
 {}
 
-Wall::Handle::Handle() :
-    hovered{ false },
-    selected{ false },
-    wall{ nullptr },
-    last_hit{ 0.0f, 0.0f, 0.0f }
-{}
+//Wall::Handle::Handle() :
+//    hovered{ false },
+//    selected{ false },
+//    wall{ nullptr },
+//    last_hit{ 0.0f, 0.0f, 0.0f }
+//{}
 
 std::vector<Vector3> Wall::Vertices() const
 {
@@ -551,12 +566,23 @@ void Wall::Draw_skirting_outline(const Color color) const
 
 void Wall::Draw_filled() const
 {
+
+    if (!paint_layers.empty())
+    {
+        Draw_filled(paint_layers.front()->color);
+    }
+
+}
+
+
+void Wall::Draw_filled(const Color& color) const
+{
     const auto wall_vertices = Wall_paint_quad();
     const Vector3 br = wall_vertices.at(0), bl = wall_vertices.at(1), tl = wall_vertices.at(2), tr = wall_vertices.at(3);
 
     if (windows.empty() && doors.empty())
     {
-        DrawQuad(Wall_paint_quad(), paint_layers.front()->color);
+        DrawQuad(Wall_paint_quad(), color);
         return;
     }
 
@@ -570,25 +596,25 @@ void Wall::Draw_filled() const
         DrawQuad({ tl,
                    tr,
                    w_tr,
-                   w_tl }, paint_layers.front()->color);
+                   w_tl }, color);
 
         // Bottom 
         DrawQuad({ br,
                    bl,
                    w_bl,
-                   w_br }, paint_layers.front()->color);
+                   w_br }, color);
 
         // Left
         DrawQuad({ tl,
                    w_tl,
                    w_bl,
-                   bl }, paint_layers.front()->color);
+                   bl }, color);
 
         // Right 
         DrawQuad({ w_tr,
                    tr,
                    br,
-                   w_br}, paint_layers.front()->color);
+                   w_br}, color);
 
 
     }
@@ -612,19 +638,19 @@ void Wall::Draw_filled() const
         DrawQuad({ tl,
                    tr,
                    d_tr,
-                   d_tl }, paint_layers.front()->color);
+                   d_tl },color);
 
         // Left
         DrawQuad({ tl,
                    d_tl,
                    d_bl,
-                   bl }, paint_layers.front()->color);
+                   bl }, color);
 
         // Right 
         DrawQuad({ d_tr,
                    tr,
                    br,
-                   d_br }, paint_layers.front()->color);
+                   d_br }, color);
 
 
     }
@@ -640,18 +666,6 @@ void Wall::Draw_skirting_filled(const Color& _color) const
 {
     DrawQuad(Skirting_quad(), _color);
 
-}
-
-void Wall::Draw_filled(const Color& default_color) const
-{
-    if (paint_layers.empty())
-    {
-        DrawQuad(Wall_paint_quad(), default_color);
-    }
-    else
-    {
-        Draw_filled();
-    }
 }
 
 void Wall::Draw() const
@@ -788,11 +802,8 @@ float Room::Liters_of(const Paint* target) const
     return total;
 }
 
-void Room::Mirror_resize(const Wall& dragged_wall, const Vector3& move_delta)
+void Room::Mirror_resize(const Vector3& direction, const Vector3& move_delta)
 {
-    if (!dragged_wall.room_vertices) return;
-
-    const Vector3 direction = dragged_wall.Normal();
 
     for (Vector3& corner : corners)
     {
@@ -815,13 +826,26 @@ void Room::Draw_walls() const
     {
         if (i == floor_index)
         {
-            walls.at(i).Draw_filled(DARKGRAY);
-
+            if (walls.at(i).paint_layers.empty())
+            {
+                walls.at(i).Draw_filled(DARKGRAY);
+            }
+            else
+            {
+                walls.at(i).Draw_filled();
+            }
             walls.at(i).Draw_area(TextAnchor3D::Center);
         }
         else if (i == cieling_index)
         {
-            walls.at(i).Draw_filled(WHITE);
+            if (walls.at(i).paint_layers.empty())
+            {
+                walls.at(i).Draw_filled(WHITE);
+            }
+            else
+            {
+                walls.at(i).Draw_filled();
+            }
         }
         else
         {
@@ -830,8 +854,3 @@ void Room::Draw_walls() const
         }
     }
 }
-
-
-
-
-

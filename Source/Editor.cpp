@@ -100,17 +100,16 @@ void Editor::Edit()
 }
 
 
-void Editor::Wall_handle()
+Handle Editor::Make_handle(const Wall* w)
 {
-    handle = Handle{};
-    if (Wall* w = Hovered_handle())
-    {
-        handle.Position = [w]() { return w->Center(); };
-        handle.Normal = [w]() { return w->Normal(); };
-        handle.on_drag = [this,w](auto d) { room.Mirror_resize(w->Normal(), d); };
-        handle.last_hit = handle.Position();
+    Handle _handle{};
 
-    }
+    _handle.Position = [w]() { return w->Center(); };
+    _handle.Normal = [w]() { return w->Normal(); };
+    _handle.on_drag = [this,w](auto d) { room.Mirror_resize(w->Normal(), d); };
+    _handle.last_hit = _handle.Position();
+
+    return _handle;
 }
 
 void Editor::Select_paint() noexcept
@@ -206,7 +205,11 @@ void Editor::Drag_handles()
     {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            Wall_handle();
+            if (const Wall* w = Hovered_handle())
+            {
+                handle = Make_handle(w);
+            }
+
 
             handle.selected = true;
         }

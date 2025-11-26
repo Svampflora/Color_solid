@@ -33,10 +33,10 @@ public:
     void Render() const override;
 
 private:
+    Handle Make_handle(const Wall* wall);
     Wall* Hovered_handle();
     Wall* Hovered_wall();
     const Wall* Hovered_wall() const;
-    void Wall_handle();
     void Edit();
     void Select_handle();
     void Select_paint() noexcept;

@@ -37,6 +37,7 @@ private:
     Wall* Hovered_handle();
     Wall* Hovered_wall();
     const Wall* Hovered_wall() const;
+    
     void Edit();
     void Select_handle();
     void Select_paint() noexcept;

@@ -105,7 +105,7 @@ void Aperture::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall
 
 // === DOOR ===
 
-Door::Door(const float& _center, const float& wall_height) noexcept
+Entrance::Entrance(const float& _center, const float& wall_height) noexcept
 {
     width = 1.0f;
     height=2.0f;
@@ -115,7 +115,7 @@ Door::Door(const float& _center, const float& wall_height) noexcept
 
 
 
-std::array<Vector3, 4> Door::Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const
+std::array<Vector3, 4> Entrance::Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const
 {
     const Vector3 forward = wall_normal;
     constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
@@ -133,7 +133,7 @@ std::array<Vector3, 4> Door::Frame_quad(const std::array<Vector3, 4>& w, const V
     return{ p0, p1, p2, p3 };
 }
 
-Vector3 Door::Center_position(const std::array<Vector3, 4>& wall_quad) const
+Vector3 Entrance::Center_position(const std::array<Vector3, 4>& wall_quad) const
 {
     const Vector3 right = Vector3Normalize(Vector3Subtract(wall_quad[1], wall_quad[0]));
     const Vector3 up = Vector3Normalize(Vector3Subtract(wall_quad[3], wall_quad[0]));
@@ -143,18 +143,18 @@ Vector3 Door::Center_position(const std::array<Vector3, 4>& wall_quad) const
     return Vector3Add(wall_quad.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (half_of(height)))));
 }
 
-float Door::Frame_height() const noexcept
+float Entrance::Frame_height() const noexcept
 {
     return height + architrave;
 }
 
-float Door::Frame_width() const noexcept
+float Entrance::Frame_width() const noexcept
 {
     return width + architrave * 2;
 }
 
 
-void Door::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const
+void Entrance::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const
 {
 
     auto door_vertices = Quad(wall_quad, wall_normal);
@@ -178,6 +178,59 @@ Color Skirting::Get_color() const
     return paint_layers.front()->color;
 }
 
+float Skirting::Area(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal) const 
+{
+    float area = 0.0f;
+    std::vector< std::array<Vector3, 4>> boards = Quads(wall_quad, entrances, wall_normal);
+
+    for (const auto& board : boards)
+    {
+        area += QuadArea(board);
+    }
+    return area;
+}
+
+std::vector<std::array<Vector3, 4>>
+Skirting::Quads(const std::array<Vector3, 4>& wall_quad,
+    const std::vector<Entrance>& entrances,
+    const Vector3 wall_normal) const
+{
+    std::vector<std::array<Vector3, 4>> boards;
+
+    const Vector3 vertical = Vector3Normalize(Vector3Subtract(wall_quad.at(3), wall_quad.at(0)));
+    const Vector3 height_vector = Vector3Scale(vertical, height);
+
+    Vector3 bottom_left = wall_quad.at(0);
+
+    for (const auto& entrance : entrances)
+    {
+        auto frame = entrance.Frame_quad(wall_quad, wall_normal);
+
+        const Vector3 entrance_left = frame.at(0);
+
+        boards.push_back({
+            bottom_left,
+            entrance_left,
+            Vector3Add(entrance_left, height_vector),
+            Vector3Add(bottom_left, height_vector)
+            });
+
+        bottom_left = frame.at(1);
+    }
+
+    const Vector3 final_right = wall_quad.at(1);
+
+    boards.push_back({
+        bottom_left,
+        final_right,
+        Vector3Add(final_right, height_vector),
+        Vector3Add(bottom_left, height_vector)
+        });
+
+    return boards;
+}
+
+
 bool Skirting::Is_painted() const noexcept
 {
     return !paint_layers.empty();
@@ -191,6 +244,27 @@ void Skirting::Add_Paint(Paint& paint)
 void Skirting::Set_height(const float& new_height) noexcept
 {
     height = new_height;
+}
+
+void Skirting::Draw(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal, const Color& color) const
+{
+    std::vector< std::array<Vector3, 4>> boards = Quads(wall_quad, entrances, wall_normal);
+
+    for (const auto& board : boards)
+    {
+        DrawQuad(board, color);
+        debugging_tools::DrawVertexOrder(board, wall_normal);
+    }
+}
+
+void Skirting::Draw_outline(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal, const Color& color) const
+{
+    std::vector< std::array<Vector3, 4>> boards = Quads(wall_quad, entrances, wall_normal);
+
+    for (const auto& board : boards)
+    {
+        DrawQuadLinesEx3D(board, color);
+    }
 }
 
 
@@ -427,7 +501,7 @@ void Wall::Add_paint(Paint& paint)
 void Wall::Try_add_door() 
 {
 
-    const Door door(0.5f, Height());
+    const Entrance door(0.5f, Height());
     float total_door_width = door.Frame_width();
     for (const auto& _door : doors)
     {
@@ -553,16 +627,16 @@ void Wall::Draw_apertures_outline(const Color& color) const
     }
 }
 
-void Wall::Draw_skirting_outline(const Color color) const
-{
-
-
-    std::array<Vector3, 4> arr = Skirting_quad();
-    std::vector <Vector3> vec(arr.begin(), arr.end());
-    DrawPolygonLinesEx3D(vec, color);
-    debugging_tools::DrawVertexOrder(arr, Normal());
-
-}
+//void Wall::Draw_skirting_outline(const Color color) const
+//{
+//
+//
+//    std::array<Vector3, 4> arr = Skirting_quad();
+//    std::vector <Vector3> vec(arr.begin(), arr.end());
+//    DrawPolygonLinesEx3D(vec, color);
+//    debugging_tools::DrawVertexOrder(arr, Normal());
+//
+//}
 
 void Wall::Draw_filled() const
 {
@@ -656,17 +730,17 @@ void Wall::Draw_filled(const Color& color) const
     }
 }
 
-void Wall::Draw_skirting_filled() const
-{
-    DrawQuad(Skirting_quad(), skirt_board.Get_color());
-
-}
-
-void Wall::Draw_skirting_filled(const Color& _color) const
-{
-    DrawQuad(Skirting_quad(), _color);
-
-}
+//void Wall::Draw_skirting_filled() const
+//{
+//    DrawQuad(Skirting_quad(), skirt_board.Get_color());
+//
+//}
+//
+//void Wall::Draw_skirting_filled(const Color& _color) const
+//{
+//    DrawQuad(Skirting_quad(), _color);
+//
+//}
 
 void Wall::Draw() const
 {
@@ -684,11 +758,11 @@ void Wall::Draw() const
 
     if (skirt_board.Is_painted())
     {
-        Draw_skirting_filled();
+        skirt_board.Draw(Quad(), doors, Normal(), skirt_board.Get_color()); //Todo: make internal colorcheck instead of .get
     }
     else
     {
-        Draw_skirting_outline(WHITE);
+        skirt_board.Draw_outline(Quad(), doors, Normal(), WHITE);
     }
 
     if (!doors.empty())

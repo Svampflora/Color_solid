@@ -201,16 +201,11 @@ void Editor::Draw_UI() const
 void Editor::Drag_handles()
 {
 
-    if (Hovered_handle())
+    if (const Wall* w = Hovered_handle())
     {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            if (const Wall* w = Hovered_handle())
-            {
-                handle = Make_handle(w);
-            }
-
-
+            handle = Make_handle(w);
             handle.selected = true;
         }
     }
@@ -281,7 +276,7 @@ void Editor::Render() const
         if (RayIntersectsSkirting(ray, *hovered_wall).hit)
         {
             const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
-            hovered_wall->Draw_skirting_filled(transparent_color);
+            hovered_wall->skirt_board.Draw(hovered_wall->Quad(),hovered_wall->doors,hovered_wall->Normal(), transparent_color);
         }
         else
         {

@@ -42,6 +42,9 @@ void DrawCubeWires3D(Vector3 position, float width, float height, float depth, C
 
 Vector3 PolygonNormal(const std::vector<Vector3>& vertices);
 float PolygonArea(const std::vector<Vector3>& vertices);
+float TriangleArea(const Vector3& a, const Vector3& b, const Vector3& c);
+float QuadArea(const std::array<Vector3, 4>& v);
+
 const char* FormatMeasurement(float meters) noexcept;
 
 namespace debugging_tools

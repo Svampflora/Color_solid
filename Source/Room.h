@@ -41,6 +41,7 @@ struct Object
 {
     Vector3 center;
     float width, height, depth;
+    std::vector<Paint*> paint_layers;
 
     Object() noexcept
     {
@@ -73,15 +74,15 @@ struct Aperture
     float Area() const noexcept;
     float Height() const noexcept;
     float Width() const noexcept;
-    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
+    virtual void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 
 };
 
-struct Door : public Aperture
+struct Entrance : public Aperture
 {
     float architrave;
 
-    Door(const float& _center, const float& wall_height) noexcept;
+    Entrance(const float& _center, const float& wall_height) noexcept;
 
     std::array<Vector3, 4> Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const;
     Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const override;
@@ -89,7 +90,7 @@ struct Door : public Aperture
     float Frame_height() const noexcept;
     float Frame_width() const noexcept;
     //TODO:: float Frame_area() const noexcept;
-    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
+    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const override;
 };
 
 struct Skirting
@@ -99,10 +100,15 @@ struct Skirting
 
     Color Get_color() const;
 
-    //TODO:: float Area() const noexcept;
+    std::vector< std::array<Vector3, 4>>Quads(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3 wall_normal) const;
+    float Area(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal) const ;
     bool Is_painted() const noexcept;
     void Add_Paint(Paint& paint);
     void Set_height(const float& new_height) noexcept;
+    void Draw(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal, const Color& color) const;
+    void Draw_outline(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal, const Color& color) const;
+
+
 };
 
 struct Wall
@@ -110,7 +116,7 @@ struct Wall
     std::vector<Paint*> paint_layers;
     std::vector<size_t> vertex_indices;
     const std::vector< Vector3>* room_vertices = nullptr;
-    std::vector<Door> doors{};
+    std::vector<Entrance> doors{};
     std::vector<Aperture> windows;
 
     Skirting skirt_board;
@@ -142,9 +148,9 @@ struct Wall
     void Draw_outline(const Color color) const;
     void Draw_doors_outline(const Color color) const;
     void Draw_apertures_outline(const Color& color) const;
-    void Draw_skirting_outline(const Color color) const;
-    void Draw_skirting_filled() const;
-    void Draw_skirting_filled(const Color& _color) const;
+    //void Draw_skirting_outline(const Color color) const;
+    //void Draw_skirting_filled() const;
+    //void Draw_skirting_filled(const Color& _color) const;
     void Draw_filled() const;
     void Draw_filled(const Color& default_color) const;
     void Draw() const;

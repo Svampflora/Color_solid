@@ -456,6 +456,28 @@ float PolygonArea(const std::vector<Vector3>& vertices)
     return std::abs(area * 0.5f);
 }
 
+float TriangleArea(const Vector3& a, const Vector3& b, const Vector3& c)
+{
+    Vector3 ab = Vector3Subtract(b, a);
+    Vector3 ac = Vector3Subtract(c, a);
+    Vector3 cross = Vector3CrossProduct(ab, ac);
+    return 0.5f * Vector3Length(cross);
+}
+
+float QuadArea(const std::array<Vector3, 4>& v)
+{
+    // Quad vertices assumed in order:
+    // v0 -- v1
+    // |     |
+    // v3 -- v2
+
+    // Split into two triangles: (v0, v1, v2) and (v0, v2, v3)
+    float A1 = TriangleArea(v[0], v[1], v[2]);
+    float A2 = TriangleArea(v[0], v[2], v[3]);
+
+    return A1 + A2;
+}
+
 inline const char* FormatMeasurement(float meters) noexcept
 {
     return (meters >= 1.0f)

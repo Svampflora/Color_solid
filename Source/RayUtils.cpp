@@ -85,6 +85,38 @@ void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll)
     roll = RAD2DEG * roll;
 }
 
+std::array<Vector3, 4> Quad_strip(const std::array<Vector3, 4>& quad, float normalized_left, float normalized_right)
+{
+    normalized_left = Clamp(normalized_left, 0.0f, 1.0f);
+    normalized_right = Clamp(normalized_right, 0.0f, 1.0f);
+
+    if (normalized_right < normalized_left)
+        std::swap(normalized_left, normalized_right);
+
+
+    const Vector3 br = quad[0];
+    const Vector3 bl = quad[1];
+    const Vector3 tl = quad[2];
+    const Vector3 tr = quad[3];
+
+    const Vector3 bottom_left_pos =
+        Vector3Lerp(bl, br, normalized_left);
+
+    const Vector3 bottom_right_pos =
+        Vector3Lerp(bl, br, normalized_right);
+
+    const Vector3 top_left_pos =
+        Vector3Lerp(tl, tr, normalized_left);
+
+    const Vector3 top_right_pos =
+        Vector3Lerp(tl, tr, normalized_right);
+
+    return { bottom_right_pos,
+             bottom_left_pos,
+             top_left_pos,
+             top_right_pos };
+}
+
 void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint)
 {
     // Character index position in sprite font

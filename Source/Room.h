@@ -33,7 +33,7 @@ struct Handle
         return Position && Normal;
     }
 
-    bool Hovered(const Camera& camera) const noexcept;
+    bool Hovered(const Camera& camera) const;
 
 };
 
@@ -69,11 +69,15 @@ struct Aperture
     Aperture(const Vector2& _center) noexcept : center{ _center }, width{ 1.0f }, height{ 1.5f }, depth{ 0.1f }
     {};
 
+    virtual ~Aperture() = default;
+
+    std::vector<std::array<Vector3, 4>> Carve(const std::array<Vector3, 4>& main_quad, const std::array<Vector3, 4>& aperture_quad) const;
     std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3 wall_normal) const;
-    virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     float Area() const noexcept;
     float Height() const noexcept;
     float Width() const noexcept;
+
+    virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     virtual void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 
 };
@@ -83,6 +87,8 @@ struct Entrance : public Aperture
     float architrave;
 
     Entrance(const float& _center, const float& wall_height) noexcept;
+    virtual ~Entrance() = default;
+
 
     std::array<Vector3, 4> Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const;
     Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const override;
@@ -123,6 +129,7 @@ struct Wall
 
     Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept;
 
+    std::vector<std::array<Vector3, 4>> Paint_quads() const;
     std::vector<Vector3> Vertices() const;
     std::array<Vector3, 4> Wall_paint_quad() const;
     std::array<Vector3, 4> Skirting_quad() const;
@@ -137,7 +144,6 @@ struct Wall
     float Height() const;
     float Total_area() const;
     float Wall_paint_area() const;
-    float Skirting_area() const;
     float Liters_of(const Paint* target) const;
     bool Facing_camera(const Vector3 camera_position) const;
     void Add_paint(Paint& paint);
@@ -148,9 +154,6 @@ struct Wall
     void Draw_outline(const Color color) const;
     void Draw_doors_outline(const Color color) const;
     void Draw_apertures_outline(const Color& color) const;
-    //void Draw_skirting_outline(const Color color) const;
-    //void Draw_skirting_filled() const;
-    //void Draw_skirting_filled(const Color& _color) const;
     void Draw_filled() const;
     void Draw_filled(const Color& default_color) const;
     void Draw() const;

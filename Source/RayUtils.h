@@ -18,6 +18,7 @@ RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance);
 bool IntersectLineWithHorizontalPlane(Vector3 a, Vector3 b, float planeY, Vector3& outPoint);
 Vector3 RotationMatrixToEuler(Matrix m);
 void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll);
+std::array<Vector3, 4> Quad_strip(const std::array<Vector3, 4>&, float normalized_left, float normalized_right );
 
 enum class TextAnchor3D {
     Center, TopLeft, TopRight, BottomLeft, BottomRight,

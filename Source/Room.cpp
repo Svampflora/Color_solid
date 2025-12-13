@@ -11,9 +11,10 @@
 #include "Utilities.h"
 #include <format>
 #include <string>
+#include <algorithm>
 
 
-bool Handle::Hovered(const Camera& camera) const noexcept
+bool Handle::Hovered(const Camera& camera) const
 {
     if (!Active())
     {
@@ -21,7 +22,7 @@ bool Handle::Hovered(const Camera& camera) const noexcept
     }
     const Vector2 mouse = GetMousePosition();
     constexpr float radius = 10.0f;
-    float range = radius * radius;
+    constexpr float range = radius * radius;
     const Vector2 screen_position = GetWorldToScreen(Position(), camera);
     const float distance = Vector2DistanceSqr(mouse, screen_position);
     if (distance > range)
@@ -55,10 +56,7 @@ std::array<Vector3, 4> Aperture::Quad(const std::array<Vector3, 4>& w, const Vec
     const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
     const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
 
-    //const float wall_width = Vector3Distance(w.at(0), w.at(1));
-    //const float wall_height = Vector3Distance(w.at(0), w.at(3));
     const Vector3 aperture_center = Center_position(w);
-        //Vector3Add(w.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
 
     const Vector3 mid_right = Vector3Scale(right, half_of(width));
     const Vector3 mid_top = Vector3Scale(up, half_of(height));
@@ -74,10 +72,10 @@ std::array<Vector3, 4> Aperture::Quad(const std::array<Vector3, 4>& w, const Vec
 
 Vector3 Aperture::Center_position(const std::array<Vector3, 4>& wall_quad) const
 {
-    const Vector3 right = Vector3Normalize(Vector3Subtract(wall_quad[1], wall_quad[0]));
-    const Vector3 up = Vector3Normalize(Vector3Subtract(wall_quad[3], wall_quad[0]));
-    const float wall_width = Vector3Distance(wall_quad[0], wall_quad[1]);
-    const float wall_height = Vector3Distance(wall_quad[0], wall_quad[3]);
+    const Vector3 right = Vector3Normalize(Vector3Subtract(wall_quad.at(1), wall_quad.at(0)));
+    const Vector3 up = Vector3Normalize(Vector3Subtract(wall_quad.at(3), wall_quad.at(0)));
+    const float wall_width = Vector3Distance(wall_quad.at(0), wall_quad.at(1));
+    const float wall_height = Vector3Distance(wall_quad.at(0), wall_quad.at(3));
 
     return Vector3Add(wall_quad.at(0), Vector3Add(Vector3Scale(right, (center.x * wall_width)), Vector3Scale(up, (center.y * wall_height))));
 }
@@ -85,7 +83,7 @@ Vector3 Aperture::Center_position(const std::array<Vector3, 4>& wall_quad) const
 void Aperture::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const
 {
     auto window_vertices = Quad(wall_quad, wall_normal);
-    const Vector3 w_br = window_vertices[0], w_bl = window_vertices[1], w_tl = window_vertices[2], w_tr = window_vertices[3];
+    const Vector3 w_br = window_vertices.at(0), w_bl = window_vertices.at(1), w_tl = window_vertices.at(2), w_tr = window_vertices.at(3);
 
     const Vector3 away{ Vector3Scale(Vector3Negate(wall_normal), depth) };
     const Vector3 w_br_away = Vector3Add(w_br, away), w_bl_away = Vector3Add(w_bl, away), w_tl_away = Vector3Add(w_tl, away), w_tr_away = Vector3Add(w_tr, away);
@@ -102,6 +100,74 @@ void Aperture::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall
     //right plane
     DrawQuadLinesEx3D({ w_br_away, w_tr_away, w_tr, w_br }, color);
 }
+
+
+std::vector<std::array<Vector3, 4>> Aperture::Carve(const std::array<Vector3, 4>& main_quad, const std::array<Vector3, 4>& aperture_quad) const
+{
+    const Vector3& br = main_quad[0];
+    const Vector3& bl = main_quad[1];
+    const Vector3& tl = main_quad[2];
+    const Vector3& tr = main_quad[3];
+
+    const Vector3& a_br = aperture_quad[0];
+    const Vector3& a_bl = aperture_quad[1];
+    const Vector3& a_tl = aperture_quad[2];
+    const Vector3& a_tr = aperture_quad[3];
+
+    const Vector3 right = Vector3Normalize(Vector3Subtract(tr, tl));
+    const Vector3 up = Vector3Normalize(Vector3Subtract(tl, bl));
+
+    auto U = [&](const Vector3& p) {
+        return Vector3DotProduct(Vector3Subtract(p, bl), right);
+        };
+
+    std::vector<std::array<Vector3, 4>> frame_quads;
+    // ---- TOP STRIP -------------------------------------------------------
+    // tl --- tr
+    //  |     |
+    // a_tl- a_tr
+    //
+    if (a_tl.y < tl.y || a_tr.y < tr.y)  // Only add if aperture doesn’t touch the top
+    {
+        frame_quads.push_back({
+            tl, tr, a_tr, a_tl
+            });
+    }
+
+    // ---- BOTTOM STRIP ---------------------------------------------------
+    // a_bl - a_br
+    //  |     |
+    // bl --- br
+    //
+    if (a_bl.y > bl.y || a_br.y > br.y)
+    {
+        frame_quads.push_back({
+            br, bl, a_bl, a_br
+            });
+    }
+
+    // ---- LEFT STRIP -----------------------------------------------------
+    // tl --- a_tl
+    //  |       |
+    // bl --- a_bl
+    //
+    if (U(a_bl) > U(bl))
+    {
+        frame_quads.push_back({ tl, a_tl, a_bl, bl });
+    }
+
+    // ---- RIGHT STRIP ----------------------------------------------------
+    // a_tr --- tr
+    //   |       |
+    // a_br --- br
+    //
+    if (U(a_br) < U(br))
+    {
+        frame_quads.push_back({ a_tr, tr, br, a_br });
+    }
+    return frame_quads;
+}
+
 
 // === DOOR ===
 
@@ -313,6 +379,141 @@ std::array<Vector3, 4> Wall::Wall_paint_quad() const
     return wall_quad;
 }
 
+//std::vector<std::array<Vector3, 4>> Wall::Wall_paint_quads() const
+//{
+//    std::vector<std::array<Vector3, 4>> quads;
+//
+//    auto wall = Wall_paint_quad();
+//
+//    // First carve windows
+//    for (const Aperture& w : windows)
+//    {
+//        auto aperture = w.Quad(wall, Normal());
+//        std::vector<std::array<Vector3, 4>> frame_quads = w.Carve(wall, aperture);
+//        quads.insert(quads.end(), frame_quads.begin(), frame_quads.end());
+//
+//    }
+//
+//    // Now carve doors
+//    for (const Entrance& d : doors)
+//    {
+//        auto aperture = d.Frame_quad(wall, Normal());
+//        std::vector<std::array<Vector3, 4>> frame_quads = d.Carve(wall, aperture);
+//        quads.insert(quads.end(), frame_quads.begin(), frame_quads.end());
+//    }
+//
+//    return quads;
+//}
+
+//std::vector<std::array<Vector3, 4>> Wall::Paint_quads() const
+//{
+//    std::vector<Aperture> apertures;
+//    apertures.reserve(doors.size() + windows.size());
+//    std::copy(doors.begin(), doors.end(), std::back_inserter(apertures));
+//    std::copy(windows.begin(), windows.end(), std::back_inserter(apertures));
+//
+//
+//    std::sort(apertures.begin(), apertures.end(),
+//        [](Aperture const& a, Aperture const& b) { return a.center.x < b.center.x; });
+//
+//    auto wall_quad = Wall_paint_quad();
+//    Vector3 br = wall_quad.at(0);
+//    Vector3 bl = wall_quad.at(1);
+//    Vector3 tl = wall_quad.at(2);
+//    Vector3 tr = wall_quad.at(3);
+//
+//    for (int i = 0; i < apertures.size(); i++)
+//    {
+//        std::array<Vector3, 4> aperture_frame_strip = Quad_strip(wall_quad, )
+//        // unfinished
+//    }
+//        // 1, go through aperture from one side to the other
+//        // 2, cut out a normal strip that contain each aperture ( natural edge between each aperture.Center() aswell as wall-edge)
+//        // 3, use Aperture::Carve() on each strip
+//        // 4, return accumulated quads
+//
+//    return result;
+//}
+
+struct ApertureSpan
+{
+    const Aperture* aperture;
+    float left_u;
+    float right_u;
+};
+
+std::vector<std::array<Vector3, 4>> Wall::Paint_quads() const
+{
+    std::vector<std::array<Vector3, 4>> result;
+
+    std::vector<const Aperture*> apertures;
+    for (const auto& d : doors)   apertures.push_back(&d);
+    for (const auto& w : windows) apertures.push_back(&w);
+
+    auto wall_quad = Wall_paint_quad();
+
+    if (apertures.empty())
+    {
+        result.push_back(wall_quad);
+        return result;
+    }
+
+    const float wall_width = Vector3Distance(wall_quad[0], wall_quad[1]);
+
+    std::vector<ApertureSpan> spans;
+    for (const Aperture* ap : apertures)
+    {
+        const float half_u = (ap->width * 0.5f) / wall_width;
+        spans.push_back({
+            ap,
+            ap->center.x - half_u,
+            ap->center.x + half_u
+            });
+    }
+
+
+    std::sort(spans.begin(), spans.end(),
+        [](const auto& a, const auto& b)
+        {
+            return a.left_u < b.left_u;
+        });
+
+    for (size_t i = 0; i < spans.size(); ++i)
+    {
+        float strip_left_u;
+        float strip_right_u;
+
+        if (i == 0)
+        {
+            strip_left_u = 0.0f;
+        }
+        else
+        {
+            strip_left_u = 0.5f * (spans[i - 1].right_u + spans[i].left_u);
+        }
+
+        if (i + 1 < spans.size())
+        {
+            strip_right_u = 0.5f * (spans[i].right_u + spans[i + 1].left_u);
+        }
+        else
+        {
+            strip_right_u = 1.0f;
+        }
+
+        auto strip_quad = Quad_strip(wall_quad, strip_left_u, strip_right_u);
+
+        const auto aperture_quad =
+            spans[i].aperture->Quad(strip_quad, Normal());
+
+        auto carved = spans[i].aperture->Carve(strip_quad, aperture_quad);
+
+        result.insert(result.end(), carved.begin(), carved.end());
+    }
+
+    return result;
+}
+
 std::array<Vector3, 4> Wall::Skirting_quad() const
 {
     if (room_vertices->size() < 4) throw;
@@ -456,11 +657,6 @@ float Wall::Wall_paint_area() const
     return PolygonArea(vec);
 }
 
-float Wall::Skirting_area() const
-{
-    return Total_area() - Wall_paint_area();
-}
-
 float Wall::Liters_of(const Paint* target) const
 {
     float total = 0.0f;
@@ -479,7 +675,7 @@ float Wall::Liters_of(const Paint* target) const
         if (layer == target)
         {
             const size_t coats = layer->coats > 0 ? layer->coats : layer->coats;
-            total += (Skirting_area() * coats) / layer->m2_per_liter;
+            total += (skirt_board.Area(Quad(), doors, Normal()) * coats) / layer->m2_per_liter;
         }
     }
 
@@ -627,17 +823,6 @@ void Wall::Draw_apertures_outline(const Color& color) const
     }
 }
 
-//void Wall::Draw_skirting_outline(const Color color) const
-//{
-//
-//
-//    std::array<Vector3, 4> arr = Skirting_quad();
-//    std::vector <Vector3> vec(arr.begin(), arr.end());
-//    DrawPolygonLinesEx3D(vec, color);
-//    debugging_tools::DrawVertexOrder(arr, Normal());
-//
-//}
-
 void Wall::Draw_filled() const
 {
 
@@ -649,98 +834,94 @@ void Wall::Draw_filled() const
 }
 
 
+//void Wall::Draw_filled(const Color& color) const
+//{
+//    const auto wall_vertices = Wall_paint_quad();
+//    const Vector3 br = wall_vertices.at(0), bl = wall_vertices.at(1), tl = wall_vertices.at(2), tr = wall_vertices.at(3);
+//
+//    if (windows.empty() && doors.empty())
+//    {
+//        DrawQuad(Wall_paint_quad(), color);
+//        return;
+//    }
+//
+//    for (const Aperture& window : windows)
+//    {
+//        auto window_vertices = window.Quad(wall_vertices, Normal());
+//        const Vector3 w_br = window_vertices.at(0), w_bl = window_vertices.at(1), w_tl = window_vertices.at(2), w_tr = window_vertices.at(3);
+//
+//
+//        // Top 
+//        DrawQuad({ tl,
+//                   tr,
+//                   w_tr,
+//                   w_tl }, color);
+//
+//        // Bottom 
+//        DrawQuad({ br,
+//                   bl,
+//                   w_bl,
+//                   w_br }, color);
+//
+//        // Left
+//        DrawQuad({ tl,
+//                   w_tl,
+//                   w_bl,
+//                   bl }, color);
+//
+//        // Right 
+//        DrawQuad({ w_tr,
+//                   tr,
+//                   br,
+//                   w_br}, color);
+//
+//
+//    }
+//
+//    constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+//    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, Normal()));
+//    const Vector3 up = Vector3Normalize(Vector3CrossProduct(Normal(), right));
+//
+//
+//    for (const auto& door : doors)
+//    {
+//        auto door_vertices = door.Frame_quad(Quad(), Normal());
+//        Vector3 d_br = door_vertices.at(0), d_bl = door_vertices.at(1), d_tl = door_vertices.at(2), d_tr = door_vertices.at(3);
+//
+//        d_br = Vector3Add(d_br, Vector3Scale(up, skirt_board.height));
+//        d_bl = Vector3Add(d_bl, Vector3Scale(up, skirt_board.height));
+//
+//        // Top 
+//        DrawQuad({ tl,
+//                   tr,
+//                   d_tr,
+//                   d_tl },color);
+//
+//        // Left
+//        DrawQuad({ tl,
+//                   d_tl,
+//                   d_bl,
+//                   bl }, color);
+//
+//        // Right 
+//        DrawQuad({ d_tr,
+//                   tr,
+//                   br,
+//                   d_br }, color);
+//
+//
+//    }
+//}
+
 void Wall::Draw_filled(const Color& color) const
 {
-    const auto wall_vertices = Wall_paint_quad();
-    const Vector3 br = wall_vertices.at(0), bl = wall_vertices.at(1), tl = wall_vertices.at(2), tr = wall_vertices.at(3);
-
-    if (windows.empty() && doors.empty())
-    {
-        DrawQuad(Wall_paint_quad(), color);
-        return;
-    }
-
-    for (const Aperture& window : windows)
-    {
-        auto window_vertices = window.Quad(wall_vertices, Normal());
-        const Vector3 w_br = window_vertices.at(0), w_bl = window_vertices.at(1), w_tl = window_vertices.at(2), w_tr = window_vertices.at(3);
-
-
-        // Top 
-        DrawQuad({ tl,
-                   tr,
-                   w_tr,
-                   w_tl }, color);
-
-        // Bottom 
-        DrawQuad({ br,
-                   bl,
-                   w_bl,
-                   w_br }, color);
-
-        // Left
-        DrawQuad({ tl,
-                   w_tl,
-                   w_bl,
-                   bl }, color);
-
-        // Right 
-        DrawQuad({ w_tr,
-                   tr,
-                   br,
-                   w_br}, color);
-
-
-    }
-
-    constexpr Vector3 world_up = { 0.0f, 1.0f, 0.0f };
-    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, Normal()));
-    const Vector3 up = Vector3Normalize(Vector3CrossProduct(Normal(), right));
-
-    //br = Vector3Add(br, Vector3Scale(up, skirt_board.height));
-    //bl = Vector3Add(bl, Vector3Scale(up, skirt_board.height));
-
-    for (const auto& door : doors)
-    {
-        auto door_vertices = door.Frame_quad(Quad(), Normal());
-        Vector3 d_br = door_vertices.at(0), d_bl = door_vertices.at(1), d_tl = door_vertices.at(2), d_tr = door_vertices.at(3);
-
-        d_br = Vector3Add(d_br, Vector3Scale(up, skirt_board.height));
-        d_bl = Vector3Add(d_bl, Vector3Scale(up, skirt_board.height));
-
-        // Top 
-        DrawQuad({ tl,
-                   tr,
-                   d_tr,
-                   d_tl },color);
-
-        // Left
-        DrawQuad({ tl,
-                   d_tl,
-                   d_bl,
-                   bl }, color);
-
-        // Right 
-        DrawQuad({ d_tr,
-                   tr,
-                   br,
-                   d_br }, color);
-
-
-    }
+    std::vector<std::array<Vector3, 4>> paint_quads = Paint_quads();
+        for (const auto& q : paint_quads)
+        {
+            DrawQuad(q, color);
+        }
 }
 
-//void Wall::Draw_skirting_filled() const
-//{
-//    DrawQuad(Skirting_quad(), skirt_board.Get_color());
-//
-//}
-//
-//void Wall::Draw_skirting_filled(const Color& _color) const
-//{
-//    DrawQuad(Skirting_quad(), _color);
-//
-//}
 
 void Wall::Draw() const
 {

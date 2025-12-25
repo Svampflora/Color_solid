@@ -15,6 +15,7 @@ struct RayHit {
 };
 
 RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance);
+RayCollision RayIntersectsQuad(const Ray& ray, const std::array<Vector3, 4>& quad);
 bool IntersectLineWithHorizontalPlane(Vector3 a, Vector3 b, float planeY, Vector3& outPoint);
 Vector3 RotationMatrixToEuler(Matrix m);
 void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll);

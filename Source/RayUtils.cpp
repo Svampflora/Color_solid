@@ -27,6 +27,17 @@ RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance)
     return result;
 }
 
+RayCollision RayIntersectsQuad(const Ray& ray, const std::array<Vector3, 4>& quad)
+{
+
+    const Vector3 p0 = quad.at(0);
+    const Vector3 p1 = quad.at(1);
+    const Vector3 p2 = quad.at(2);
+    const Vector3 p3 = quad.at(3);
+
+    return GetRayCollisionQuad(ray, p0, p1, p2, p3);
+}
+
 bool IntersectLineWithHorizontalPlane(Vector3 a, Vector3 b, float planeY, Vector3& outPoint)
 {
     // If both points are on the same side -> no intersection
@@ -40,7 +51,7 @@ bool IntersectLineWithHorizontalPlane(Vector3 a, Vector3 b, float planeY, Vector
 
 Vector3 RotationMatrixToEuler(Matrix m)
 {
-    Vector3 euler;
+    Vector3 euler{};
 
     // Check for gimbal lock
     if (fabsf(m.m2) < 0.999f) {

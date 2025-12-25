@@ -247,7 +247,7 @@ void Editor::Paint_surface()
 
         if (selected_paint)
         {
-            const RayCollision ray_collision = RayIntersectsSkirting(ray, *hovered_wall);
+            const RayCollision ray_collision = RayIntersectsQuad(ray, hovered_wall->Skirting_quad());
 
             if (ray_collision.hit)
             {
@@ -273,7 +273,9 @@ void Editor::Render() const
     {
         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
 
-        if (RayIntersectsSkirting(ray, *hovered_wall).hit)
+        const RayCollision ray_collision = RayIntersectsQuad(ray, hovered_wall->Skirting_quad());
+
+        if (ray_collision.hit)
         {
             const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
             hovered_wall->skirt_board.Draw(hovered_wall->Quad(),hovered_wall->doors,hovered_wall->Normal(), transparent_color);

@@ -72,10 +72,10 @@ struct Aperture
     virtual ~Aperture() = default;
 
     std::vector<std::array<Vector3, 4>> Carve(const std::array<Vector3, 4>& main_quad, const std::array<Vector3, 4>& aperture_quad) const;
-    std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3 wall_normal) const;
+    std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal) const;
     float Area() const noexcept;
-    float Height() const noexcept;
-    float Width() const noexcept;
+    virtual float Height() const noexcept;
+    virtual float Width() const noexcept;
 
     virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     virtual void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
@@ -90,13 +90,13 @@ struct Entrance : public Aperture
     virtual ~Entrance() = default;
 
 
-    std::array<Vector3, 4> Frame_quad(const std::array<Vector3, 4>& w, const Vector3 wall_normal) const;
+    std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& w, const Vector3& wall_normal) const;
     Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const override;
 
-    float Frame_height() const noexcept;
-    float Frame_width() const noexcept;
+    float Height() const noexcept override;
+    float Width() const noexcept  override;
     //TODO:: float Frame_area() const noexcept;
-    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const override;
+    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 };
 
 struct Skirting
@@ -131,14 +131,15 @@ struct Wall
 
     std::vector<std::array<Vector3, 4>> Paint_quads() const;
     std::vector<Vector3> Vertices() const;
-    std::array<Vector3, 4> Wall_paint_quad() const;
-    std::array<Vector3, 4> Skirting_quad() const;
+    std::array<Vector3, 4> Skirting_quad() const; //TODO: used for mouse-ray intersect only. replace and delete
     std::array<Vector3, 4> Quad() const;
     std::array<Vector3, 3> Triangle() const;
+    std::vector<std::array<Vector3, 4>>Cut_bottom(const std::vector<std::array<Vector3, 4>>& quads, float distance_from_bottom) const;
     Vector3 Center() const;
     Vector3 Position(const Vector2& normalized_coordinate) const;
     Vector3 Normal() const;
     Vector3 Floor_edge() const;
+    Vector3 Up() const;
     const Vector3& Vertex(size_t i) const;
     float Length() const;
     float Height() const;
@@ -161,7 +162,7 @@ struct Wall
 
 RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall);
 
-RayCollision RayIntersectsSkirting(const Ray& ray, const Wall& wall);
+//RayCollision RayIntersectsSkirting(const Ray& ray, const Wall& wall);
 
 struct Room
 {

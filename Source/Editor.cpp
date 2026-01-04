@@ -18,11 +18,39 @@ Editor::Editor(Room& roomRef, CameraController& camRef) :
 {
 
     paints.push_back(Paint({ 250, 150, 150, 255 }));
+    paints.push_back(Paint({ 237, 237, 213, 255 }));
+    paints.push_back(Paint({ 66, 95, 150, 255 }));
+
+    Build_paint_menu();
     camera_controller.Set_birds_eye();
     font = LoadFont("Assets/vcr-osd-mono.ttf");
 }
 
+void Editor::Build_paint_menu()
+{
+    paint_menu = Menu{};
 
+    for (const Paint& p : paints)
+    {
+        paint_menu.Add_item(
+            std::make_unique<PaintMenuItem>(&p)
+        );
+    }
+}
+
+Paint* Editor::Selected_paint()
+{
+    const int i = paint_menu.Selected_index();
+    if (i < 0) return nullptr;
+    return &paints.at(i);
+}
+
+const Paint* Editor::Selected_paint() const
+{
+    const int i = paint_menu.Selected_index();
+    if (i < 0) return nullptr;
+    return &paints.at(i);
+}
 
 Wall* Editor::Hovered_handle()
 {
@@ -112,29 +140,6 @@ Handle Editor::Make_handle(const Wall* w)
     return _handle;
 }
 
-void Editor::Select_paint() noexcept
-{
-    const Rectangle paint_menu{ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF(), 80, 80 };
-
-    //selected_paint = paint_menu(paints);
-
-    for (auto& paint : paints)
-    {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-        {
-            if (CheckCollisionPointRec(GetMousePosition(), paint_menu))
-            {
-                selected_paint = &paint;
-            }
-            else
-            {
-                selected_paint = nullptr;
-
-            }
-        }
-    }
-}
-
 
 std::unique_ptr<State> Editor::Update()
 {
@@ -145,12 +150,12 @@ std::unique_ptr<State> Editor::Update()
 
     camera_controller.Update();
     Edit();
-    Select_paint();
+    paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
 
     return nullptr;
 }
 
-void Editor::Draw_UI() const 
+void Editor::Draw_UI() const
 {
     constexpr float radius = 10.0f;
     float closest_distance_sq = radius * radius;
@@ -181,21 +186,7 @@ void Editor::Draw_UI() const
 
     }
 
-
-    const Rectangle paint_menu{ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF(), 80, 80 };
-    for (const auto& paint : paints)
-    {
-        DrawRectangleRounded(paint_menu, 0.5f, 10, paint.color);
-        const float liters = room.Liters_of(&paint);
-        DrawTextF(TextFormat("%.1f L", liters), paint_menu.x + paint_menu.width, paint_menu.y, 25, RAYWHITE);
-        DrawTextF(TextFormat("%i strykningar", paint.coats), paint_menu.x + paint_menu.width, paint_menu.y + 30, 25, RAYWHITE);
-
-    }
-    if (selected_paint)
-    {
-        DrawRectangleRoundedLines(paint_menu, 0.5f, 10, 20.0f, DARKGRAY);
-
-    }
+    paint_menu.Draw({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
 }
 
 void Editor::Drag_handles()
@@ -245,13 +236,15 @@ void Editor::Paint_surface()
     {
         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
 
+        Paint* selected_paint = Selected_paint();
+
         if (selected_paint)
         {
             const RayCollision ray_collision = RayIntersectsQuad(ray, hovered_wall->Skirting_quad());
 
             if (ray_collision.hit)
             {
-                hovered_wall->skirt_board.Add_Paint(*selected_paint);
+                hovered_wall->skirt_board.Add_Paint(*selected_paint); //TODO: return surface area and add to selected paint.area
             }
             else
             {
@@ -269,6 +262,8 @@ void Editor::Render() const
     room.Draw_walls();
 
     const Wall* hovered_wall = Hovered_wall();
+    const Paint* selected_paint = Selected_paint();
+
     if (selected_paint && hovered_wall)
     {
         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);

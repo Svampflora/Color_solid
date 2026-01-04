@@ -17,7 +17,7 @@ struct Handle
     bool selected;
 
 
-    Handle()
+    Handle() noexcept
     {
         last_hit = { 0.0f,0.0f,0.0f };
         selected = false;

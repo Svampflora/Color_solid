@@ -20,7 +20,7 @@ class Editor : public State
     Room& room;
     Handle handle;
     std::vector<Paint> paints;
-    Paint* selected_paint = nullptr;
+    Menu paint_menu;
     Font font; 
 
     float min_size = 1.0f;
@@ -37,9 +37,13 @@ private:
     Wall* Hovered_handle();
     Wall* Hovered_wall();
     const Wall* Hovered_wall() const;
+    Paint* Selected_paint();
+    const Paint* Selected_paint() const;
+
     
     void Edit();
     void Select_handle();
+    void Build_paint_menu();
     void Select_paint() noexcept;
     void Paint_surface();
     void Drag_handles();

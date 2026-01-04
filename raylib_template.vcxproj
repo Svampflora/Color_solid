@@ -173,6 +173,7 @@
     <ClCompile Include="Source\Application.cpp" />
     <ClCompile Include="Source\Color_Picker.cpp" />
     <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Source\Menu.cpp" />
     <ClCompile Include="Source\Paint.cpp" />
     <ClCompile Include="Source\Pattern.cpp" />
     <ClCompile Include="Source\RayUtils.cpp" />
@@ -184,6 +185,7 @@
     <ClInclude Include="Source\Animator.h" />
     <ClInclude Include="Source\CameraController.h" />
     <ClInclude Include="Source\ColorUtils.h" />
+    <ClInclude Include="Source\Menu.h" />
     <ClInclude Include="Source\Paint.h" />
     <ClInclude Include="Source\Pattern.h" />
     <ClInclude Include="Source\RayUtils.h" />

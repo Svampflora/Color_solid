@@ -241,7 +241,7 @@ Color Skirting::Get_color() const
     {
         throw std::runtime_error("skirting has no color to provide");
     }
-    return paint_layers.front()->color;
+    return paint_layers.back()->color;
 }
 
 float Skirting::Area(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal) const 
@@ -319,7 +319,6 @@ void Skirting::Draw(const std::array<Vector3, 4>& wall_quad, const std::vector<E
     for (const auto& board : boards)
     {
         DrawQuad(board, color);
-        debugging_tools::DrawVertexOrder(board, wall_normal);
     }
 }
 
@@ -432,7 +431,7 @@ std::vector<std::array<Vector3, 4>> Wall::Paint_quads() const
             strip_right_u = 1.0f;
         }
 
-        auto strip_quad = Quad_strip(wall_quad, strip_left_u, strip_right_u);
+        const auto strip_quad = Quad_strip(wall_quad, strip_left_u, strip_right_u);
 
         const auto aperture_quad =
             spans[i].aperture->Quad(strip_quad, Normal());
@@ -818,7 +817,7 @@ void Wall::Draw_filled() const
 
     if (!paint_layers.empty())
     {
-        Draw_filled(paint_layers.front()->color);
+        Draw_filled(paint_layers.back()->color);
     }
 
 }

@@ -117,7 +117,7 @@ struct Skirting
 
 };
 
-struct Wall
+struct Wall : Paintable
 {
     std::vector<Paint*> paint_layers;
     std::vector<size_t> vertex_indices;
@@ -129,23 +129,23 @@ struct Wall
 
     Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept;
 
+    std::vector<std::array<Vector3, 4>> Cut_bottom(const std::vector<std::array<Vector3, 4>>& quads, float distance_from_bottom) const;
     std::vector<std::array<Vector3, 4>> Paint_quads() const;
     std::vector<Vector3> Vertices() const;
     std::array<Vector3, 4> Skirting_quad() const; //TODO: used for mouse-ray intersect only. replace and delete
     std::array<Vector3, 4> Quad() const;
     std::array<Vector3, 3> Triangle() const;
-    std::vector<std::array<Vector3, 4>>Cut_bottom(const std::vector<std::array<Vector3, 4>>& quads, float distance_from_bottom) const;
+    const Vector3& Vertex(size_t i) const;
     Vector3 Center() const;
     Vector3 Position(const Vector2& normalized_coordinate) const;
     Vector3 Normal() const;
     Vector3 Floor_edge() const;
     Vector3 Up() const;
-    const Vector3& Vertex(size_t i) const;
     float Length() const;
     float Height() const;
     float Total_area() const;
     float Wall_paint_area() const;
-    float Liters_of(const Paint* target) const;
+    float Liters_used(const Paint* target) const override;
     bool Facing_camera(const Vector3 camera_position) const;
     void Add_paint(Paint& paint);
     void Try_add_door();
@@ -164,7 +164,7 @@ RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall);
 
 //RayCollision RayIntersectsSkirting(const Ray& ray, const Wall& wall);
 
-struct Room
+struct Room : Paintable
 {
     Vector3 position{ 0.0f, 1.0f, 0.0f };
     std::vector<Vector3> corners{};
@@ -178,7 +178,7 @@ struct Room
     float Total_wall_paint_area() const noexcept;
     float Selected_wall_area() const;
     void Generate_box_room(float width, float length, float height) noexcept;
-    float Liters_of(const Paint* target) const;
+    float Liters_used(const Paint* target) const override;
     void Mirror_resize(const Vector3& direction, const Vector3& move_delta);
     void Draw_walls() const;
 };

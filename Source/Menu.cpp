@@ -1,7 +1,7 @@
 #include "Menu.h"
 
-    constexpr Vector2 ICON_SIZE = { 50.0f, 50.0f }; //move to settings
-    constexpr float ICON_PADDING = 5.0f;
+    constexpr Vector2 ICON_SIZE = { 60.0f, 60.0f }; //move to settings
+    constexpr float ICON_PADDING = 20.0f;
 
 void Menu::Update(Vector2 position) noexcept
 {

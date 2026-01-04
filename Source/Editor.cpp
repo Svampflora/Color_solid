@@ -33,7 +33,7 @@ void Editor::Build_paint_menu()
     for (const Paint& p : paints)
     {
         paint_menu.Add_item(
-            std::make_unique<PaintMenuItem>(&p)
+            std::make_unique<Paint_Icon>(&p, room)
         );
     }
 }

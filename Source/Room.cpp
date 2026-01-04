@@ -646,7 +646,7 @@ float Wall::Wall_paint_area() const
     return area;
 }
 
-float Wall::Liters_of(const Paint* target) const
+float Wall::Liters_used(const Paint* target) const
 {
     float total = 0.0f;
 
@@ -945,12 +945,12 @@ float Room::Selected_wall_area() const
     return area;
 }
 
-float Room::Liters_of(const Paint* target) const
+float Room::Liters_used(const Paint* target) const
 {
     float total = 0.0f;
     for (const auto& wall : walls)
     {
-        total += wall.Liters_of(target);
+        total += wall.Liters_used(target);
     }
     return total;
 }

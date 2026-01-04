@@ -34,11 +34,11 @@ public:
 
 private:
     Handle Make_handle(const Wall* wall);
+    const Wall* Hovered_wall() const;
     Wall* Hovered_handle();
     Wall* Hovered_wall();
-    const Wall* Hovered_wall() const;
-    Paint* Selected_paint();
     const Paint* Selected_paint() const;
+    Paint* Selected_paint();
 
     
     void Edit();

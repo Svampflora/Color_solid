@@ -72,7 +72,7 @@ struct Aperture
     virtual ~Aperture() = default;
 
     std::vector<std::array<Vector3, 4>> Carve(const std::array<Vector3, 4>& main_quad, const std::array<Vector3, 4>& aperture_quad) const;
-    std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal) const;
+    virtual std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal) const;
     float Area() const noexcept;
     virtual float Height() const noexcept;
     virtual float Width() const noexcept;
@@ -90,13 +90,13 @@ struct Entrance : public Aperture
     virtual ~Entrance() = default;
 
 
-    std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& w, const Vector3& wall_normal) const;
+    std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& w, const Vector3& wall_normal) const override;
     Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const override;
 
     float Height() const noexcept override;
     float Width() const noexcept  override;
     //TODO:: float Frame_area() const noexcept;
-    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
+    void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const override;
 };
 
 struct Skirting
@@ -173,11 +173,11 @@ struct Room : Paintable
     size_t floor_index;
     size_t cieling_index;
 
-    Room() noexcept;
+    Room();
 
-    float Total_wall_paint_area() const noexcept;
+    float Total_wall_paint_area() const;
     float Selected_wall_area() const;
-    void Generate_box_room(float width, float length, float height) noexcept;
+    void Generate_box_room(float width, float length, float height);
     float Liters_used(const Paint* target) const override;
     void Mirror_resize(const Vector3& direction, const Vector3& move_delta);
     void Draw_walls() const;

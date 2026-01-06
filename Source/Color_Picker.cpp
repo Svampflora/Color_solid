@@ -80,9 +80,6 @@ void Color_picker::Update(const Camera& camera)
 		hovered = -1;
 	}
 
-	//if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-	//{
-	//}
 }
 
 

@@ -19,15 +19,6 @@ struct Lab_Color
     float L, a, b;
 };
 
-struct Color_Plus
-{
-    float blackness;       // 0.0 (ingen svärta) → 1.0 (helt svart)
-    float chromaticness;   // 0.0 (ingen kulör) → 1.0 (full kulörstyrka)
-    float hue;             // 0.0 → 2π (radians) – vinkeln runt färghjul
-
-    Color_Plus(float b, float c, float h);
-};
-
 static inline float pivot_rgb(float n) noexcept {
     return (n > 0.04045f) ? powf((n + 0.055f) / 1.055f, 2.4f) : (n / 12.92f);
 }

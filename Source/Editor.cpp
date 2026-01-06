@@ -258,31 +258,31 @@ void Editor::Render() const
 {
     camera_controller.Begin_3D();
 
-    //room.Draw_walls();
-    //
-    //const Wall* hovered_wall = Hovered_wall();
-    //const Paint* selected_paint = Selected_paint();
-    //
-    //if (selected_paint && hovered_wall)
-    //{
-    //    const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
-    //
-    //    const RayCollision ray_collision = RayIntersectsQuad(ray, hovered_wall->Skirting_quad());
-    //
-    //    if (ray_collision.hit)
-    //    {
-    //        const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
-    //        hovered_wall->skirt_board.Draw(hovered_wall->Quad(),hovered_wall->doors,hovered_wall->Normal(), transparent_color);
-    //    }
-    //    else
-    //    {
-    //        const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
-    //        hovered_wall->Draw_filled(transparent_color);
-    //    }
-    //
-    //}
+    room.Draw_walls();
+    
+    const Wall* hovered_wall = Hovered_wall();
+    const Paint* selected_paint = Selected_paint();
+    
+    if (selected_paint && hovered_wall)
+    {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
+    
+        const RayCollision ray_collision = RayIntersectsQuad(ray, hovered_wall->Skirting_quad());
+    
+        if (ray_collision.hit)
+        {
+            const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
+            hovered_wall->skirt_board.Draw(hovered_wall->Quad(),hovered_wall->doors,hovered_wall->Normal(), transparent_color);
+        }
+        else
+        {
+            const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
+            hovered_wall->Draw_filled(transparent_color);
+        }
+    
+    }
 
-    color_picker.Draw();
+    //color_picker.Draw();
     camera_controller.End_3D();
 
     Draw_UI();

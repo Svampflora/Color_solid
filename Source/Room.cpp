@@ -884,12 +884,12 @@ RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall) //TODO: find ho
 
 // === ROOM ===
 
-Room::Room() noexcept
+Room::Room()
 {
     Generate_box_room(4.0f, 5.0f, 2.5f);
 }
 
-void Room::Generate_box_room(float width, float length, float height) noexcept
+void Room::Generate_box_room(float width, float length, float height) 
 {
     corners.clear();
 
@@ -927,7 +927,7 @@ void Room::Generate_box_room(float width, float length, float height) noexcept
 
 }
 
-float Room::Total_wall_paint_area() const noexcept
+float Room::Total_wall_paint_area() const
 {
     float area = 0.0f;
     for (const Wall& wall : walls)

@@ -1,7 +1,11 @@
 #include "Color_Picker.h"
-
 #include "FloorPlanEditor.h"
+
+#include <codeanalysis\warnings.h>
+#pragma warning(push)
+#pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
 #include "raymath.h"
+#pragma warning(pop)
 
 
 

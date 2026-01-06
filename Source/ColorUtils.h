@@ -45,8 +45,8 @@ Lab_Color RGB_to_Lab(RGB c) noexcept;
 Lab_Color RGB_to_OKLab(RGB c) noexcept;
 RGB Lab_to_RGB(Lab_Color lab) noexcept;
 RGB OKLab_to_RGB(Lab_Color lab) noexcept;
-RGB HSV_to_RGB(float h, float s, float v);
-RGB HSL_to_RGB(float h, float s, float l);
+RGB HSV_to_RGB(float h, float s, float v) noexcept;
+RGB HSL_to_RGB(float h, float s, float l) noexcept;
 
 
 // uppskattning

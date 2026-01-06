@@ -114,7 +114,7 @@ RGB OKLab_to_RGB(Lab_Color lab) noexcept
     };
 }
 
-RGB HSV_to_RGB(float h, float s, float v)
+RGB HSV_to_RGB(float h, float s, float v) noexcept
 {
     const float c = v * s;
     const float x = c * (1 - fabsf(fmodf(h / 60.0f, 2) - 1));
@@ -137,7 +137,7 @@ RGB HSV_to_RGB(float h, float s, float v)
     };
 }
 
-RGB HSL_to_RGB(float h, float s, float l)
+RGB HSL_to_RGB(float h, float s, float l) noexcept
 {
     const float c = (1.0f - fabsf(2.0f * l - 1.0f)) * s;
     const float x = c * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
@@ -177,7 +177,7 @@ RGB Lab_lerp(RGB a, RGB b, float t) noexcept //depreciated
     const Lab_Color labA = RGB_to_Lab(a);
     const Lab_Color labB = RGB_to_Lab(b);
 
-    Lab_Color labResult{
+    const Lab_Color labResult{
     (1 - t) * labA.L + t * labB.L,
     (1 - t) * labA.a + t * labB.a,
     (1 - t) * labA.b + t * labB.b

@@ -19,7 +19,7 @@ class Editor : public State
 {
 	CameraController& camera_controller;
     Room& room;
-    Color_Picker color_picker;
+    Color_picker color_picker;
     Handle handle;
     std::vector<Paint> paints;
     Menu paint_menu;

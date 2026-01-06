@@ -9,7 +9,7 @@
 #include "State.h"
 #include "Room.h"
 #include "CameraController.h"
-#include "ColorUtils.h"
+#include "Color_picker.h"
 
 struct Camera3D;
 
@@ -19,7 +19,7 @@ class Editor : public State
 {
 	CameraController& camera_controller;
     Room& room;
-    Color_solid solid;
+    Color_Picker color_picker;
     Handle handle;
     std::vector<Paint> paints;
     Menu paint_menu;

@@ -566,50 +566,14 @@ RGB Color_wheel::get_color(float radians) const noexcept
 //    }
 //}
 
-//void Color_solid::Draw() const
-//{
-//    if (!initialized) return;
-//
-//    const Matrix rotationMatrix = MatrixRotateXYZ({ DEG2RAD * rotation.x, DEG2RAD * rotation.y, DEG2RAD * rotation.z });
-//
-//    // Modellens transform
-//    DrawModelEx(model, center, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, WHITE);
-//    //DrawModelWiresEx(model, position, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, BLACK);
-//}
-
 Vector3 midpoint(Vector3 v1, Vector3 v2)
 {
     return Vector3Divide(Vector3Add(v1, v2), Vector3{0.0f, 0.0f, 0.0f});
 }
 
-//void Color_solid::Draw_triangle(const std::array<Vector3, 3>& corners, size_t resolution, float spoke) const
-//{
-//    const float cellW = Vector3Distance(midpoint(corners.at(0), corners.at(1)), corners.at(2)) / resolution;
-//    const float triangle_height = Vector3Distance(corners.at(0), corners.at(1));
-//    const float cellH = triangle_height / resolution;
-//
-//    
-//    for (size_t i = 0; i <= resolution; ++i)
-//    {
-//        for (size_t j = 0; j <= resolution - i; ++j)
-//        {
-//            const int blackness = i * (1-1 / resolution);
-//            const int chromaticness = j * (1-1 / resolution);
-//
-//            const Color_Plus color = { blackness, chromaticness, spoke };
-//            const Vector2 pos{ center.x + j * cellW,
-//                                center.y + i * cellH + (0.5f * j * cellH) };
-//
-//            const float square_size = 0.5f * (triangle_height / resolution);
-//
-//            RGB rgb = Color_plus_to_RGB(color, wheel);
-//            DrawRectangleRounded({ pos.x,pos.y,square_size, square_size }, 0.5f, 10, rgb);
-//        }
-//    }
-//}
 
 
-void Color_solid::Draw() const
+void Color_solid::Make_nodes()
 {
     constexpr float SQRT3_OVER_2 = 0.866025403784f;
 
@@ -631,7 +595,7 @@ void Color_solid::Draw() const
 
         for (unsigned int r = start_r; r < radial_steps; ++r)
         {
-            const float rad = (r ) * spacing;
+            const float rad = (r)*spacing;
             const float s = rad / radius;
 
             // Number of vertical points allowed for this radius
@@ -651,17 +615,27 @@ void Color_solid::Draw() const
                     1.0f
                 );
 
-                Vector3 pos{
+                const Vector3 pos
+                {
                     center.x + std::cos(angle) * rad,
                     center.y + y_pos,
                     center.z + std::sin(angle) * rad
                 };
 
                 const RGB color = HSL_to_RGB(h, s, l);
-                DrawSphere(pos, 0.15f, color);
+                color_nodes.push_back({ pos, color });
 
             }
         }
+    }
+}
+
+void Color_solid::Draw() const
+{
+    for (const auto& node : color_nodes)
+    {
+        DrawSphere(node.position, COLOR_NODE_RADIUS, node.color);
+
     }
 
     DrawCircle3D(center, radius, Vector3{ 1,0,0 }, 90.0f, WHITE);

@@ -1,7 +1,7 @@
 #include "Color_Picker.h"
 
 #include "FloorPlanEditor.h"
-
+#include "raymath.h"
 
 
 
@@ -40,64 +40,57 @@ void remove_if(Container& container, Predicate predicate)
 		container.end());
 }
 
-
-
-std::unique_ptr<State> Color_Picker::Update()
-{
-	//if (IsKeyReleased(KEY_Q))
-	//{
-	//	EndMode3D();
-	//	return std::make_unique<FloorPlanEditor>();
-	//}
-	//
-	//const float scroll = GetMouseWheelMove();
-	//solid.rotation.y += scroll * 5.0f;
-
-	return nullptr;
-}
-
 [[gsl::suppress(f.6)]]
-Color_Picker::Color_Picker() :
-	wheel({
-	{0.0f, NCS_YELLOW},
-	{PI / 2, NCS_RED},
-	{PI , NCS_BLUE},
-	{3 * PI / 2, NCS_GREEN}
-		}),
-	solid({ 0.0f, 0.0f, 0.0f }, 2.0f, 3.0f, 8, 12, 4, wheel)
+Color_picker::Color_picker() :
+	solid({ 0.0f, 0.0f, 0.0f }, 2.0f, 3.0f, 12, 6, Color_wheel())
 
+{}
+
+void Color_picker::Update(const Camera& camera)
 {
-	Camera camera = { 0 };
-	//camera.position = Vector3{ 0.0f, 10.0f, 10.0f };
-	camera.position = { 0.0f, 2.0f, 6.0f };
 
-	camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
-	camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
-	camera.fovy = 45.0f;
-	camera.projection = CAMERA_PERSPECTIVE;
+	const Ray ray = GetMouseRay(GetMousePosition(), camera);
+	
+	float closest_distance = Vector3Distance(camera.position, solid.center); //TODO: make default distance longer
+	int i = 0;
+	for (const auto& node : solid.color_nodes)
+	{
+		const RayCollision collision = GetRayCollisionSphere(ray, node.position, COLOR_NODE_RADIUS);
 
+
+		if (collision.hit)
+		{
+			const float distance_to_hit = Vector3Distance(camera.position, collision.point);
+			if (distance_to_hit < closest_distance)
+			{
+				closest_distance = distance_to_hit;
+				hovered = i;
+			}
+		}
+
+		i++;
+	}
+
+	if (closest_distance == Vector3Distance(camera.position, solid.center))
+	{
+		hovered = -1;
+	}
+
+	//if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+	//{
+	//}
 }
 
-void Color_Picker::Render()  const
+
+
+void Color_picker::Draw()  const
 {
-	//Color targetRGB = NCS_To_RGB(ncsInput);
-	//DrawRectangle(400, 100, 100, 100, targetRGB);
-	//DrawText(ncsInput.c_str(), 400, 210, 20, WHITE);
-	//NCS_Color ncs_color(ncsInput);
-	//ncs_color.draw({ 400, 100 }, { 100, 100 });
+	solid.Draw();
 
-	//NCSTriangle ncs_triangle(ncs_color.hueCode, 10);
+	if (hovered > -1)
+	{
+		const Color_node node = solid.node(hovered);
+		DrawSphere(node.position, COLOR_NODE_RADIUS * 1.2f, node.color); //solid.draw_node(index, size)?
 
-	//ncs_triangle.draw({ 0.1f * GetScreenWidthF(), 0.1f * GetScreenHeightF() }, { 0.8f * GetScreenWidthF(), 0.8f * GetScreenHeightF() });
-
-
-
-
-	//wheel.draw({ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f }, 250, 12);
-	//DrawCircleV({ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f }, 250, GRAY);
-
-	//drawTriangleGradient({ GetScreenWidthF() * 0.5f, 0.0f }, { 0.0f, GetScreenHeightF() }, { GetScreenWidthF(), GetScreenHeightF() }, NCS_RED, NCS_YELLOW, 6);
-
-	//solid.Draw();
-
+	}
 }

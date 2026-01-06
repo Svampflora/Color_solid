@@ -137,6 +137,12 @@ constexpr RGB NCS_BLUE {0, 135, 189, 255};
 //
 //};
 
+constexpr float COLOR_NODE_RADIUS = 0.15f; //settings
+struct Color_node
+{
+    Vector3 position;
+    RGB color;
+};
 
 class Color_solid
 {
@@ -146,29 +152,32 @@ public:
     Vector3 rotation;
     float radius;
     float height;
-    unsigned int height_steps;   // vertical resolution
     unsigned int angle_steps;    // hue resolution
     unsigned int radial_steps;   // saturation resolution
+    std::vector<Color_node> color_nodes;
 
 
-
-    Color_solid(Vector3 _center, float _radius, float _height, unsigned int _val_resolution, unsigned int _hue_resolution, unsigned int _sat_resolution, const Color_wheel& _wheel): 
+    Color_solid(Vector3 _center, float _radius, float _height, unsigned int _hue_resolution, unsigned int _sat_resolution, const Color_wheel& _wheel): 
         wheel(_wheel),
         center(_center), 
         rotation{ 0.0f, 1.0f, 0.0f },
         radius(_radius), 
         height(_height), 
-        height_steps(_val_resolution),
         angle_steps(_hue_resolution), 
-        radial_steps(_sat_resolution)
-    {}
+        radial_steps(_sat_resolution),
+        color_nodes{}
+    {
+        Make_nodes();
+    }
 
     void Draw() const;
-    //void Draw_triangle(const std::array<Vector3, 3>& corners, size_t resolution, float spoke) const;
+    Color_node node(size_t index) const { return color_nodes.at(index); }
     Vector3 Bottom() const;
     Vector3 Top() const;
     Vector3 Axis_point(float normal) const;
 
+private:
+    void Make_nodes();
 };
 
 

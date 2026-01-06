@@ -1,19 +1,18 @@
 #pragma once
 
 //#include <ranges>
-#include "State.h"
+#include "Menu.h"
 #include "ColorUtils.h"
 
-class Color_Picker : public State
+class Color_picker
 {
-	//std::string ncsInput = { "S 1050-Y90R" };
-	Color_wheel wheel;
 	Color_solid solid;
-
+	int hovered = -1;
 public:
 	
-	Color_Picker();
-	std::unique_ptr<State> Update() override;
-	void Render() const override;
+	Color_picker();
+	int  Hovered_index() const noexcept { return hovered; }
+	void Update(const Camera& camera);
+	void Draw() const;
 
 };

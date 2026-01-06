@@ -15,7 +15,7 @@
 Editor::Editor(Room& roomRef, CameraController& camRef) :
     room(roomRef),
     camera_controller(camRef),
-    solid({ 0.0f, 0.0f, 0.0f }, 2.0f, 3.0f, 9, 12, 6, Color_wheel())
+    color_picker()
 {
 
     paints.push_back(Paint({ 250, 150, 150, 255 }));
@@ -152,7 +152,7 @@ std::unique_ptr<State> Editor::Update()
     camera_controller.Update();
     Edit();
     paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
-
+    color_picker.Update(camera_controller.camera);
     return nullptr;
 }
 
@@ -282,7 +282,7 @@ void Editor::Render() const
     //
     //}
 
-    solid.Draw();
+    color_picker.Draw();
     camera_controller.End_3D();
 
     Draw_UI();

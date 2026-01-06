@@ -64,7 +64,7 @@ Color_Picker::Color_Picker() :
 	{PI , NCS_BLUE},
 	{3 * PI / 2, NCS_GREEN}
 		}),
-	solid({ 0.0f, 0.0f, -4.0f }, 2.0f, 3.0f, 48, 12, wheel)
+	solid({ 0.0f, 0.0f, 0.0f }, 2.0f, 3.0f, 8, 12, 4, wheel)
 
 {
 	Camera camera = { 0 };
@@ -83,7 +83,7 @@ void Color_Picker::Render()  const
 	//Color targetRGB = NCS_To_RGB(ncsInput);
 	//DrawRectangle(400, 100, 100, 100, targetRGB);
 	//DrawText(ncsInput.c_str(), 400, 210, 20, WHITE);
-	NCS_Color ncs_color(ncsInput);
+	//NCS_Color ncs_color(ncsInput);
 	//ncs_color.draw({ 400, 100 }, { 100, 100 });
 
 	//NCSTriangle ncs_triangle(ncs_color.hueCode, 10);
@@ -98,6 +98,6 @@ void Color_Picker::Render()  const
 
 	//drawTriangleGradient({ GetScreenWidthF() * 0.5f, 0.0f }, { 0.0f, GetScreenHeightF() }, { GetScreenWidthF(), GetScreenHeightF() }, NCS_RED, NCS_YELLOW, 6);
 
-	solid.draw();
+	//solid.Draw();
 
 }

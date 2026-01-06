@@ -13,7 +13,7 @@ Paint::Paint(Color _color) noexcept :
 void Paint::Draw_info(Rectangle rect, float liters_of) const noexcept
 {
     DrawTextF(TextFormat("%.1f L", liters_of), rect.x + (1.5f * rect.width), rect.y, 25, RAYWHITE);
-    DrawTextF(TextFormat("%i strykningar", coats), rect.x + (1.5f * rect.width), rect.y + 30, 25, RAYWHITE);
+    DrawTextF(TextFormat("%.1f M2 per liter", m2_per_liter), rect.x + (1.5f * rect.width), rect.y + 30, 25, RAYWHITE);
 }
 
 void Paint::Draw_swatch(Rectangle rect) const noexcept

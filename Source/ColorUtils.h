@@ -19,13 +19,13 @@ struct Lab_Color
     float L, a, b;
 };
 
-struct NCSPlusColor
+struct Color_Plus
 {
     float blackness;       // 0.0 (ingen svärta) → 1.0 (helt svart)
     float chromaticness;   // 0.0 (ingen kulör) → 1.0 (full kulörstyrka)
     float hue;             // 0.0 → 2π (radians) – vinkeln runt färghjul
 
-    NCSPlusColor(float b, float c, float h);
+    Color_Plus(float b, float c, float h);
 };
 
 static inline float pivot_rgb(float n) noexcept {
@@ -42,9 +42,13 @@ static inline constexpr float inv_pivot_lab(float t) noexcept {
 }
 
 Lab_Color RGB_to_Lab(RGB c) noexcept;
-RGB Lab_to_RGB(Lab_Color lab) noexcept;
 Lab_Color RGB_to_OKLab(RGB c) noexcept;
+RGB Lab_to_RGB(Lab_Color lab) noexcept;
 RGB OKLab_to_RGB(Lab_Color lab) noexcept;
+RGB HSV_to_RGB(float h, float s, float v);
+RGB HSL_to_RGB(float h, float s, float l);
+
+
 // uppskattning
 RGB NCS_To_RGB(const std::string& ncsCode);
 
@@ -59,21 +63,22 @@ void DrawTriangleGradient(Vector2 v1, Vector2 v2, Vector2 v3, Color c1, Color c2
 float deltaE76(Lab_Color c1, Lab_Color c2);
 
 
-class ColorWheel
+class Color_wheel
 {
 public:
-    struct Node
+    struct Spoke
     {
         float angle;
-        RGB color; //TODO: ändra till annan färg-typ
+        RGB color;
 
     };
 
 private:
-    std::vector<Node> wheel;
+    std::vector<Spoke> spokes;
 
 public:
-    ColorWheel(const std::vector<Node>& nodes);
+    Color_wheel();
+    Color_wheel(const std::vector<Spoke>& nodes);
     void draw(Vector2 position, float radius, unsigned int resolution) const noexcept;
     RGB get_color(float radians) const noexcept;
 
@@ -88,81 +93,81 @@ constexpr RGB NCS_RED {196, 3, 51, 255};
 constexpr RGB NCS_YELLOW {255, 212, 0, 255};
 constexpr RGB NCS_BLUE {0, 135, 189, 255};
 
-struct NCS_Color 
+//struct NCS_Color 
+//{
+//    int blackness;         
+//    int chromaticness;     
+//    std::string hueCode;   
+//    RGB rgb = { 255, 255, 255, 255 };
+//
+//    NCS_Color(const std::string& ncsStr);
+//    NCS_Color(int _blackness, int _chromaticness, const std::string& _hueCode);
+//    Color_Plus to_NCSPlus() const;
+//    std::string to_string() const;
+//    void draw(Vector2 position, Vector2 size) const;
+//
+//
+//private:
+//
+//    void parse_from_string(const std::string& ncsStr);
+//
+//    float hueCode_to_radians(const std::string& _hueCode) const;
+//
+//    std::map<std::string, float> hue_Angles() const;
+//};
+//
+//class NCSTriangle
+//{
+//    std::string hueCode;             
+//    unsigned int resolution = 10;    
+//    std::vector<NCS_Color> NCScolors;
+//
+//public:
+//    NCSTriangle(std::string _hueCode, unsigned int _resolution)
+//        : hueCode(_hueCode), resolution(_resolution)
+//    {
+//        generateColors();
+//    }
+//
+//
+//    void draw(Vector2 position, Vector2 size);
+//
+//private:
+//    void generateColors();
+//
+//};
+
+
+class Color_solid
 {
-    int blackness;         
-    int chromaticness;     
-    std::string hueCode;   
-    RGB rgb = { 255, 255, 255, 255 };
-
-    NCS_Color(const std::string& ncsStr);
-    NCS_Color(int _blackness, int _chromaticness, const std::string& _hueCode);
-    NCSPlusColor to_NCSPlus() const;
-    std::string to_string() const;
-    void draw(Vector2 position, Vector2 size) const;
-
-
-private:
-
-    void parse_from_string(const std::string& ncsStr);
-
-    float hueCode_to_radians(const std::string& _hueCode) const;
-
-    std::map<std::string, float> hue_Angles() const;
-};
-
-class NCSTriangle
-{
-    std::string hueCode;             
-    unsigned int resolution = 10;    
-    std::vector<NCS_Color> NCScolors;
-
 public:
-    NCSTriangle(std::string _hueCode, unsigned int _resolution)
-        : hueCode(_hueCode), resolution(_resolution)
-    {
-        generateColors();
-    }
-
-
-    void draw(Vector2 position, Vector2 size);
-
-private:
-    void generateColors();
-
-};
-
-class ColorBicone3D
-{
-public:
-    Vector3 position;
+    const Color_wheel wheel;
+    Vector3 center;
     Vector3 rotation;
     float radius;
     float height;
-    unsigned int hue_resolution;
-    unsigned int tint_resolution;
-    const ColorWheel wheel;
-
-    Model model;
-    bool initialized = false;
-
-    ColorBicone3D(Vector3 _position, float _radius, float _height, unsigned int _hue_resolution, unsigned int _tint_resolution, const ColorWheel& _wheel)
-        : position(_position), radius(_radius), height(_height), hue_resolution(_hue_resolution), tint_resolution(_tint_resolution), wheel(_wheel)
-    {
-        buildModel();
-    }
-
-    ~ColorBicone3D()
-    {
-        if (initialized) UnloadModel(model);
-    }
-
-    void draw() const;
+    unsigned int height_steps;   // vertical resolution
+    unsigned int angle_steps;    // hue resolution
+    unsigned int radial_steps;   // saturation resolution
 
 
-private:
 
-    void buildModel();
+    Color_solid(Vector3 _center, float _radius, float _height, unsigned int _val_resolution, unsigned int _hue_resolution, unsigned int _sat_resolution, const Color_wheel& _wheel): 
+        wheel(_wheel),
+        center(_center), 
+        rotation{ 0.0f, 1.0f, 0.0f },
+        radius(_radius), 
+        height(_height), 
+        height_steps(_val_resolution),
+        angle_steps(_hue_resolution), 
+        radial_steps(_sat_resolution)
+    {}
+
+    void Draw() const;
+    //void Draw_triangle(const std::array<Vector3, 3>& corners, size_t resolution, float spoke) const;
+    Vector3 Bottom() const;
+    Vector3 Top() const;
+    Vector3 Axis_point(float normal) const;
 
 };
 

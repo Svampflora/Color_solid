@@ -6,9 +6,9 @@
 
 class Color_Picker : public State
 {
-	std::string ncsInput = { "S 1050-Y90R" };
-	ColorWheel wheel;
-	ColorBicone3D solid;
+	//std::string ncsInput = { "S 1050-Y90R" };
+	Color_wheel wheel;
+	Color_solid solid;
 
 public:
 	

@@ -25,7 +25,8 @@ Lab_Color RGB_to_Lab(RGB color) noexcept
     y = pivot_lab(y);
     z = pivot_lab(z);
 
-    return{
+    return
+    {
         (116.0f * y) - 16.0f,
         500.0f * (x - y),
         200.0f * (y - z)
@@ -113,7 +114,54 @@ RGB OKLab_to_RGB(Lab_Color lab) noexcept
     };
 }
 
-RGB RGB_lerp(RGB a, RGB b, float t) noexcept
+RGB HSV_to_RGB(float h, float s, float v)
+{
+    const float c = v * s;
+    const float x = c * (1 - fabsf(fmodf(h / 60.0f, 2) - 1));
+    const float m = v - c;
+
+    float r, g, b;
+
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+
+    return RGB{
+        narrow_cast<unsigned char>((r + m) * 255),
+        narrow_cast<unsigned char>((g + m) * 255),
+        narrow_cast<unsigned char>((b + m) * 255),
+        255
+    };
+}
+
+RGB HSL_to_RGB(float h, float s, float l)
+{
+    const float c = (1.0f - fabsf(2.0f * l - 1.0f)) * s;
+    const float x = c * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+    const float m = l - c * 0.5f;
+
+    float r, g, b;
+
+    if (h < 60.0f) { r = c; g = x; b = 0; }
+    else if (h < 120.0f) { r = x; g = c; b = 0; }
+    else if (h < 180.0f) { r = 0; g = c; b = x; }
+    else if (h < 240.0f) { r = 0; g = x; b = c; }
+    else if (h < 300.0f) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+
+    return RGB{
+        narrow_cast<unsigned char>((r + m) * 255.0f),
+        narrow_cast<unsigned char>((g + m) * 255.0f),
+        narrow_cast<unsigned char>((b + m) * 255.0f),
+        255
+    };
+}
+
+
+RGB RGB_lerp(RGB a, RGB b, float t) noexcept //depreciated
 {
     return 
     {
@@ -124,7 +172,7 @@ RGB RGB_lerp(RGB a, RGB b, float t) noexcept
     };
 }
 
-RGB Lab_lerp(RGB a, RGB b, float t) noexcept
+RGB Lab_lerp(RGB a, RGB b, float t) noexcept //depreciated
 {
     const Lab_Color labA = RGB_to_Lab(a);
     const Lab_Color labB = RGB_to_Lab(b);
@@ -149,6 +197,8 @@ RGB OKlab_lerp(RGB a, RGB b, float t) noexcept
 
     return OKLab_to_RGB(result);
 }
+
+
 
 
 RGB HSV_lerp(RGB a, RGB b, float t) noexcept
@@ -280,69 +330,48 @@ RGB NCS_To_RGB(const std::string& ncsCode)
     return color;
 }
 
-//Paint_mixer::Paint Paint_mixer::blend(const std::vector<Paint> paints)
-//{
-//    if (paints.empty())
-//        throw std::invalid_argument("för få färger att blanda angavs");
-//
-//    std::vector<float> blacks, chromas, amounts;
-//    for (const auto& c : paints)
-//    {
-//        blacks.push_back(c.color.blackness);
-//        chromas.push_back(c.color.chromaticness);
-//        amounts.push_back(c.amount);
-//    }
-//
-//    const float total_amount = std::accumulate(amounts.begin(), amounts.end(), 0.0f);
-//
-//    const float avrage_chroma = weighted_average(chromas, amounts);
-//    const float avrage_black = weighted_average(blacks, amounts);
-//    const float found_hue = find_hue(paints);
-//
-//    return Paint{ {avrage_black, avrage_chroma, found_hue}, 1, total_amount };
-//}
-//
-//float Paint_mixer::find_hue(const std::vector<Paint> paints) const
-//{
-//    float sumX = 0, sumY = 0, total = 0;
-//    for (size_t i = 0; i < paints.size(); ++i)
-//    {
-//        sumX += cos(paints.at(i).color.hue) * paints.at(i).amount * paints.at(i).color.chromaticness;
-//        sumY += sin(paints.at(i).color.hue) * paints.at(i).amount * paints.at(i).color.chromaticness;
-//        total += paints.at(i).amount;
-//    }
-//    return atan2(sumY / total, sumX / total);
-//}
-//
-//float Paint_mixer::weighted_average(const std::vector<float> values, const std::vector<float> weights) const noexcept
-//{
-//    float sum = 0, total = 0;
-//    for (size_t i = 0; i < values.size(); ++i)
-//    {
-//        sum += values.at(i) * weights.at(i);
-//        total += weights.at(i);
-//    }
-//    return sum / total;
-//}
-
-ColorWheel::ColorWheel(const std::vector<Node>& nodes)
+RGB Color_plus_to_RGB(const Color_Plus& color, Color_wheel wheel)
 {
-    wheel = nodes;
-    std::sort(wheel.begin(), wheel.end(), [](const Node& a, const Node& b)
+    // Basfärger
+    const RGB white = { 255, 255, 255, 255 };
+    const RGB black = { 0, 0, 0, 255 };
+
+    const float w = std::max(0.0f, 1.0f - color.blackness - color.chromaticness);
+
+    // Steg 1: kulör + vit
+    RGB rgb = blend_colors(wheel.get_color(color.hue), white, w / (w + color.chromaticness));
+    // Steg 2: lägg på svart
+    return blend_colors(rgb, black, color.blackness);
+}
+
+Color_wheel::Color_wheel() :
+    spokes(
+    { 
+    {0.0f, NCS_YELLOW},
+    {PI / 2, NCS_RED},
+    {PI , NCS_BLUE},
+    {3 * PI / 2, NCS_GREEN} 
+    })
+{}
+
+Color_wheel::Color_wheel(const std::vector<Spoke>& nodes)
+{
+    spokes = nodes;
+    std::sort(spokes.begin(), spokes.end(), [](const Spoke& a, const Spoke& b)
         {
             return a.angle < b.angle;
         });
 
     // Lägg till en kopia av första färgen på slutet (för interpolering över 2π)
-    if (!wheel.empty())
+    if (!spokes.empty())
     {
-        Node wrap = wheel.front();
+        Spoke wrap = spokes.front();
         wrap.angle += 2 * PI;
-        wheel.push_back(wrap);
+        spokes.push_back(wrap);
     }
 }
 
-void ColorWheel::draw(Vector2 position, float radius, unsigned int resolution) const noexcept
+void Color_wheel::draw(Vector2 position, float radius, unsigned int resolution) const noexcept
 {
     for (unsigned int i = 0; i < resolution; ++i)
     {
@@ -374,15 +403,15 @@ void ColorWheel::draw(Vector2 position, float radius, unsigned int resolution) c
     }
 }
 
-RGB ColorWheel::get_color(float radians) const noexcept
+RGB Color_wheel::get_color(float radians) const noexcept
 {
     radians = fmod(radians, 2 * PI);
     if (radians < 0) radians += 2 * PI;
 
-    for (size_t i = 0; i < wheel.size() - 1; ++i)
+    for (size_t i = 0; i < spokes.size() - 1; ++i)
     {
-        const Node& a = wheel.at(i);
-        const Node& b = wheel.at(i + 1);
+        const Spoke& a = spokes.at(i);
+        const Spoke& b = spokes.at(i + 1);
 
         if (radians >= a.angle && radians <= b.angle)
         {
@@ -393,271 +422,382 @@ RGB ColorWheel::get_color(float radians) const noexcept
 
     return BLACK;
 }
+//
+//NCS_Color::NCS_Color(const std::string& ncsStr)
+//{
+//    parse_from_string(ncsStr);
+//}
+//
+//NCS_Color::NCS_Color(int _blackness, int _chromaticness, const std::string& _hueCode)
+//{
+//    blackness = std::min(_blackness, 99);
+//    chromaticness = std::min(_chromaticness, 99);
+//    hueCode = (_chromaticness == 0) ? "N" : _hueCode;
+//    rgb = NCS_To_RGB(to_string());
+//}
+//
+//Color_Plus NCS_Color::to_NCSPlus() const
+//{
+//
+//    return { blackness * 0.1f, chromaticness * 0.1f, hueCode_to_radians(hueCode) };
+//}
+//
+//std::string NCS_Color::to_string() const
+//{
+//    char buf[32];
+//    std::snprintf(buf, sizeof(buf), "S %02d%02d-%s", blackness, chromaticness, hueCode.c_str());
+//    return std::string(buf);
+//}
+//
+//void NCS_Color::draw(Vector2 position, Vector2 size) const
+//{
+//    DrawRectangleV(position, size, rgb);
+//    DrawTextF(this->to_string().c_str(), position.x, position.y + size.y, narrow_cast<int>(0.5f * size.y), WHITE);
+//}
+//
+//void NCS_Color::parse_from_string(const std::string& ncsStr)
+//{
+//    std::regex re("S\\s?(\\d{2})(\\d{2})-([A-Z0-9]+)");
+//    std::smatch match;
+//
+//    if (std::regex_match(ncsStr, match, re))
+//    {
+//        blackness = std::stoi(match[1]);
+//        chromaticness = std::stoi(match[2]);
+//        hueCode = (chromaticness == 0) ? "N" : match[3].str();
+//        rgb = NCS_To_RGB(ncsStr);
+//
+//        blackness = std::min(blackness, 99);
+//        chromaticness = std::min(chromaticness, 99);
+//
+//    }
+//    else
+//    {
+//        throw std::invalid_argument("Ogiltig NCS-kod: " + ncsStr);
+//    }
+//}
+//
+//float NCS_Color::hueCode_to_radians(const std::string& _hueCode) const
+//{
+//    if (_hueCode == "N") return 0.0f;
+//
+//    std::map<std::string, float> hueAngles = hue_Angles();
+//    std::regex re(R"(([A-Z]+)(\d{2})([A-Z]+))");
+//    std::smatch match;
+//
+//    if (std::regex_match(_hueCode, match, re))
+//    {
+//        std::string base1 = match[1];
+//        const int percent = std::stoi(match[2]);
+//        std::string base2 = match[3];
+//
+//        const float angle1 = hueAngles.at(base1);
+//        const float angle2 = hueAngles.at(base2);
+//
+//        const float t = percent / 100.0f;
+//
+//        // Interpolera vinklar cirkulärt
+//        float delta = angle2 - angle1;
+//        if (delta > PI) delta -= 2 * PI;
+//        if (delta < -PI) delta += 2 * PI;
+//
+//        const float result = angle1 + delta * t;
+//
+//        // Wrapa tillbaka till 0–2π
+//        return fmod((result + 2 * PI), (2 * PI));
+//    }
+//
+//    // Om det är bara en basfärg
+//    if (hueAngles.count(_hueCode))
+//    {
+//        return hueAngles.at(_hueCode);
+//    }
+//
+//    throw std::invalid_argument("Ogiltig hue-kod: " + _hueCode);
+//}
+//
+//std::map<std::string, float> NCS_Color::hue_Angles() const
+//{
+//    return
+//    {
+//        {"Y", 0.0f},
+//        {"R", PI / 2.0f},
+//        {"B", PI},
+//        {"G", 3 * PI / 2.0f}
+//    };
+//};
+//
+//
+//void NCSTriangle::draw(Vector2 position, Vector2 size)
+//{
+//    const float cellW = size.x / resolution;
+//    const float cellH = size.y / resolution;
+//
+//
+//    for (unsigned int i = 0; i <= resolution; ++i)
+//    {
+//        for (unsigned int j = 0; j <= resolution - i; ++j)
+//        {
+//            const int blackness = i * (100 / resolution);
+//            const int chromaticness = j * (100 / resolution);
+//
+//            const NCS_Color ncs = { blackness, chromaticness, hueCode };
+//            const Vector2 pos{ position.x + j * cellW,
+//                                position.y + i * cellH + (0.5f * j * cellH) };
+//
+//            const float square_size = 0.5f * (size.y / resolution);
+//
+//            ncs.draw(pos, { square_size, square_size });
+//        }
+//    }
+//}
+//
+//void NCSTriangle::generateColors()
+//{
+//    NCScolors.clear();
+//    for (unsigned int i = 0; i <= resolution; ++i)
+//    {
+//        for (unsigned int j = 0; j <= resolution - i; ++j)
+//        {
+//            const int blackness = i * (100 / resolution);
+//            const int chromaticness = j * (100 / resolution);
+//            NCScolors.push_back({ blackness, chromaticness, hueCode });
+//        }
+//    }
+//}
 
-NCS_Color::NCS_Color(const std::string& ncsStr)
+//void Color_solid::Draw() const
+//{
+//    if (!initialized) return;
+//
+//    const Matrix rotationMatrix = MatrixRotateXYZ({ DEG2RAD * rotation.x, DEG2RAD * rotation.y, DEG2RAD * rotation.z });
+//
+//    // Modellens transform
+//    DrawModelEx(model, center, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, WHITE);
+//    //DrawModelWiresEx(model, position, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, BLACK);
+//}
+
+Vector3 midpoint(Vector3 v1, Vector3 v2)
 {
-    parse_from_string(ncsStr);
+    return Vector3Divide(Vector3Add(v1, v2), Vector3{0.0f, 0.0f, 0.0f});
 }
 
-NCS_Color::NCS_Color(int _blackness, int _chromaticness, const std::string& _hueCode)
+//void Color_solid::Draw_triangle(const std::array<Vector3, 3>& corners, size_t resolution, float spoke) const
+//{
+//    const float cellW = Vector3Distance(midpoint(corners.at(0), corners.at(1)), corners.at(2)) / resolution;
+//    const float triangle_height = Vector3Distance(corners.at(0), corners.at(1));
+//    const float cellH = triangle_height / resolution;
+//
+//    
+//    for (size_t i = 0; i <= resolution; ++i)
+//    {
+//        for (size_t j = 0; j <= resolution - i; ++j)
+//        {
+//            const int blackness = i * (1-1 / resolution);
+//            const int chromaticness = j * (1-1 / resolution);
+//
+//            const Color_Plus color = { blackness, chromaticness, spoke };
+//            const Vector2 pos{ center.x + j * cellW,
+//                                center.y + i * cellH + (0.5f * j * cellH) };
+//
+//            const float square_size = 0.5f * (triangle_height / resolution);
+//
+//            RGB rgb = Color_plus_to_RGB(color, wheel);
+//            DrawRectangleRounded({ pos.x,pos.y,square_size, square_size }, 0.5f, 10, rgb);
+//        }
+//    }
+//}
+
+
+void Color_solid::Draw() const
 {
-    blackness = std::min(_blackness, 99);
-    chromaticness = std::min(_chromaticness, 99);
-    hueCode = (_chromaticness == 0) ? "N" : _hueCode;
-    rgb = NCS_To_RGB(to_string());
-}
+    constexpr float SQRT3_OVER_2 = 0.866025403784f;
 
-NCSPlusColor NCS_Color::to_NCSPlus() const
-{
+    const float half_height = height * 0.5f;
+    const float spacing = radius / radial_steps;
+    const float vertical_step = spacing * SQRT3_OVER_2;
 
-    return { blackness * 0.1f, chromaticness * 0.1f, hueCode_to_radians(hueCode) };
-}
-
-std::string NCS_Color::to_string() const
-{
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "S %02d%02d-%s", blackness, chromaticness, hueCode.c_str());
-    return std::string(buf);
-}
-
-void NCS_Color::draw(Vector2 position, Vector2 size) const
-{
-    DrawRectangleV(position, size, rgb);
-    DrawTextF(this->to_string().c_str(), position.x, position.y + size.y, narrow_cast<int>(0.5f * size.y), WHITE);
-}
-
-void NCS_Color::parse_from_string(const std::string& ncsStr)
-{
-    std::regex re("S\\s?(\\d{2})(\\d{2})-([A-Z0-9]+)");
-    std::smatch match;
-
-    if (std::regex_match(ncsStr, match, re))
+    for (unsigned int a = 0; a < angle_steps; ++a)
     {
-        blackness = std::stoi(match[1]);
-        chromaticness = std::stoi(match[2]);
-        hueCode = (chromaticness == 0) ? "N" : match[3].str();
-        rgb = NCS_To_RGB(ncsStr);
+        const float angle_t = float(a) / angle_steps;
+        const float angle = angle_t * 2.0f * PI;
+        const float h = angle_t * 360.0f;
 
-        blackness = std::min(blackness, 99);
-        chromaticness = std::min(chromaticness, 99);
-
-    }
-    else
-    {
-        throw std::invalid_argument("Ogiltig NCS-kod: " + ncsStr);
-    }
-}
-
-float NCS_Color::hueCode_to_radians(const std::string& _hueCode) const
-{
-    if (_hueCode == "N") return 0.0f;
-
-    std::map<std::string, float> hueAngles = hue_Angles();
-    std::regex re(R"(([A-Z]+)(\d{2})([A-Z]+))");
-    std::smatch match;
-
-    if (std::regex_match(_hueCode, match, re))
-    {
-        std::string base1 = match[1];
-        const int percent = std::stoi(match[2]);
-        std::string base2 = match[3];
-
-        const float angle1 = hueAngles.at(base1);
-        const float angle2 = hueAngles.at(base2);
-
-        const float t = percent / 100.0f;
-
-        // Interpolera vinklar cirkulärt
-        float delta = angle2 - angle1;
-        if (delta > PI) delta -= 2 * PI;
-        if (delta < -PI) delta += 2 * PI;
-
-        const float result = angle1 + delta * t;
-
-        // Wrapa tillbaka till 0–2π
-        return fmod((result + 2 * PI), (2 * PI));
-    }
-
-    // Om det är bara en basfärg
-    if (hueAngles.count(_hueCode))
-    {
-        return hueAngles.at(_hueCode);
-    }
-
-    throw std::invalid_argument("Ogiltig hue-kod: " + _hueCode);
-}
-
-std::map<std::string, float> NCS_Color::hue_Angles() const
-{
-    return
-    {
-        {"Y", 0.0f},
-        {"R", PI / 2.0f},
-        {"B", PI},
-        {"G", 3 * PI / 2.0f}
-    };
-};
-
-
-void NCSTriangle::draw(Vector2 position, Vector2 size)
-{
-    const float cellW = size.x / resolution;
-    const float cellH = size.y / resolution;
-
-
-    for (unsigned int i = 0; i <= resolution; ++i)
-    {
-        for (unsigned int j = 0; j <= resolution - i; ++j)
+        unsigned int start_r = 1; //only make one center
+        if (a == 0)
         {
-            const int blackness = i * (100 / resolution);
-            const int chromaticness = j * (100 / resolution);
+            start_r = 0;
+        }
 
-            const NCS_Color ncs = { blackness, chromaticness, hueCode };
-            const Vector2 pos{ position.x + j * cellW,
-                                position.y + i * cellH + (0.5f * j * cellH) };
+        for (unsigned int r = start_r; r < radial_steps; ++r)
+        {
+            const float rad = (r ) * spacing;
+            const float s = rad / radius;
 
-            const float square_size = 0.5f * (size.y / resolution);
+            // Number of vertical points allowed for this radius
+            const float max_y =
+                half_height * (1.0f - rad / radius);
 
-            ncs.draw(pos, { square_size, square_size });
+            const int rows =
+                static_cast<int>(max_y / vertical_step);
+
+            for (int y = -rows; y <= rows; ++y)
+            {
+                const float y_pos = y * vertical_step;
+
+                const float l = std::clamp(
+                    (y_pos + half_height) / height,
+                    0.0f,
+                    1.0f
+                );
+
+                Vector3 pos{
+                    center.x + std::cos(angle) * rad,
+                    center.y + y_pos,
+                    center.z + std::sin(angle) * rad
+                };
+
+                const RGB color = HSL_to_RGB(h, s, l);
+                DrawSphere(pos, 0.15f, color);
+
+            }
         }
     }
+
+    DrawCircle3D(center, radius, Vector3{ 1,0,0 }, 90.0f, WHITE);
+    DrawLine3D(Bottom(), Top(), WHITE);
 }
 
-void NCSTriangle::generateColors()
+
+
+Vector3 Color_solid::Top() const
 {
-    NCScolors.clear();
-    for (unsigned int i = 0; i <= resolution; ++i)
-    {
-        for (unsigned int j = 0; j <= resolution - i; ++j)
-        {
-            const int blackness = i * (100 / resolution);
-            const int chromaticness = j * (100 / resolution);
-            NCScolors.push_back({ blackness, chromaticness, hueCode });
-        }
-    }
+    return Vector3Add(center, Vector3Scale(rotation, half_of(height)));
 }
 
-void ColorBicone3D::draw() const
+Vector3 Color_solid::Axis_point(float normal) const
 {
-    if (!initialized) return;
-
-    const Matrix rotationMatrix = MatrixRotateXYZ({ DEG2RAD * rotation.x, DEG2RAD * rotation.y, DEG2RAD * rotation.z });
-
-    // Modellens transform
-    DrawModelEx(model, position, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, WHITE);
-    //DrawModelWiresEx(model, position, { 0, 1, 0 }, rotation.y, { 1, 1, 1 }, BLACK);
+    const float factor = normal * height;
+    return Vector3Add(Bottom(), Vector3Scale(rotation, factor));
 }
 
-void ColorBicone3D::buildModel()
+Vector3 Color_solid::Bottom() const
 {
-
-    std::vector<Vector3> vertices;
-    std::vector<Color> colors;
-
-    const int segments = hue_resolution;
-    const float angleStep = 2 * PI / segments;
-
-    const float halfHeight = height * 0.5f;
-
-    // ÖVRE HALVA: från vit → kulör (färghjul)
-    for (int i = 0; i < segments; ++i)
-    {
-        const float angle0 = i * angleStep;
-        const float angle1 = (i + 1) * angleStep;
-        const Color color0 = wheel.get_color(angle0);
-
-        for (unsigned int r = 0; r < tint_resolution; ++r)
-        {
-            const float t0 = static_cast<float>(r) / tint_resolution;
-            const float t1 = static_cast<float>((r + 1)) / tint_resolution;
-
-            // Vertikala nivåer
-            const float y0 = Lerp(0.0f, halfHeight, t0);
-            const float y1 = Lerp(0.0f, halfHeight, t1);
-
-
-            const float radius0 = radius * (1.0f - t0);
-            const float radius1 = radius * (1.0f - t1);
-
-            const Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
-            const Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
-            const Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
-            const Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
-
-            const Color c = OKlab_lerp(color0, WHITE, t0);
-
-            // Två trianglar per rektangel-segment
-            vertices.push_back(v0); colors.push_back(c);
-            vertices.push_back(v2); colors.push_back(c);
-            vertices.push_back(v3); colors.push_back(c);
-
-            vertices.push_back(v0); colors.push_back(c);
-            vertices.push_back(v3); colors.push_back(c);
-            vertices.push_back(v1); colors.push_back(c);
-        }
-    }
-    // UNDRE HALVA: från kulör (färghjul) → svart
-    for (int i = 0; i < segments; ++i)
-    {
-        const float angle0 = i * angleStep;
-        const float angle1 = (i + 1) * angleStep;
-        const Color color0 = wheel.get_color(angle0);
-
-        for (unsigned int r = 0; r < tint_resolution; ++r)
-        {
-            const float t0 = (float)r / tint_resolution;
-            const float t1 = (float)(r + 1) / tint_resolution;
-
-            const float y0 = Lerp(0.0f, -halfHeight, t0);
-            const float y1 = Lerp(0.0f, -halfHeight, t1);
-
-            const float radius0 = radius * (1.0f - t0);
-            const float radius1 = radius * (1.0f - t1);
-
-            const Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
-            const Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
-            const Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
-            const Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
-
-            const Color c = OKlab_lerp(color0, BLACK, t1);
-
-            vertices.push_back(v0); colors.push_back(c);
-            vertices.push_back(v3); colors.push_back(c);
-            vertices.push_back(v2); colors.push_back(c);
-
-            vertices.push_back(v0); colors.push_back(c);
-            vertices.push_back(v1); colors.push_back(c);
-            vertices.push_back(v3); colors.push_back(c);
-        }
-    }
-
-    // Skapa modell
-    Mesh mesh = {};
-    mesh.triangleCount = static_cast<int>(vertices.size() / 3);
-    mesh.vertexCount = static_cast<int>(vertices.size());
-
-    mesh.vertices = (float*)MemAlloc(sizeof(float) * 3 * mesh.vertexCount);
-    mesh.colors = (unsigned char*)MemAlloc(sizeof(unsigned char) * 4 * mesh.vertexCount);
-
-    for (int i = 0; i < mesh.vertexCount; ++i)
-    {
-        mesh.vertices[i * 3 + 0] = vertices[i].x;
-        mesh.vertices[i * 3 + 1] = vertices[i].y;
-        mesh.vertices[i * 3 + 2] = vertices[i].z;
-
-        mesh.colors[i * 4 + 0] = colors[i].r;
-        mesh.colors[i * 4 + 1] = colors[i].g;
-        mesh.colors[i * 4 + 2] = colors[i].b;
-        mesh.colors[i * 4 + 3] = colors[i].a;
-    }
-
-    UploadMesh(&mesh, false);
-    model = LoadModelFromMesh(mesh);
-    initialized = true;
+    return Vector3Subtract(center, Vector3Scale(rotation, half_of(height)));
 }
 
-NCSPlusColor::NCSPlusColor(float b, float c, float h)
+
+//void Color_solid::Build_bicone()
+//{
+//
+//    std::vector<Vector3> vertices;
+//    std::vector<Color> colors;
+//
+//    const int segments = hue_resolution;
+//    const float angleStep = 2 * PI / segments;
+//
+//    const float halfHeight = height * 0.5f;
+//
+//    // ÖVRE HALVA: från vit → kulör (färghjul)
+//    for (int i = 0; i < segments; ++i)
+//    {
+//        const float angle0 = i * angleStep;
+//        const float angle1 = (i + 1) * angleStep;
+//        const Color color0 = wheel.get_color(angle0);
+//
+//        for (unsigned int r = 0; r < tint_resolution; ++r)
+//        {
+//            const float t0 = static_cast<float>(r) / tint_resolution;
+//            const float t1 = static_cast<float>((r + 1)) / tint_resolution;
+//
+//            // Vertikala nivåer
+//            const float y0 = Lerp(0.0f, halfHeight, t0);
+//            const float y1 = Lerp(0.0f, halfHeight, t1);
+//
+//
+//            const float radius0 = radius * (1.0f - t0);
+//            const float radius1 = radius * (1.0f - t1);
+//
+//            const Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
+//            const Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
+//            const Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
+//            const Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
+//
+//            const Color c = OKlab_lerp(color0, WHITE, t0);
+//
+//            // Två trianglar per rektangel-segment
+//            vertices.push_back(v0); colors.push_back(c);
+//            vertices.push_back(v2); colors.push_back(c);
+//            vertices.push_back(v3); colors.push_back(c);
+//
+//            vertices.push_back(v0); colors.push_back(c);
+//            vertices.push_back(v3); colors.push_back(c);
+//            vertices.push_back(v1); colors.push_back(c);
+//        }
+//    }
+//    // UNDRE HALVA: från kulör (färghjul) → svart
+//    for (int i = 0; i < segments; ++i)
+//    {
+//        const float angle0 = i * angleStep;
+//        const float angle1 = (i + 1) * angleStep;
+//        const Color color0 = wheel.get_color(angle0);
+//
+//        for (unsigned int r = 0; r < tint_resolution; ++r)
+//        {
+//            const float t0 = (float)r / tint_resolution;
+//            const float t1 = (float)(r + 1) / tint_resolution;
+//
+//            const float y0 = Lerp(0.0f, -halfHeight, t0);
+//            const float y1 = Lerp(0.0f, -halfHeight, t1);
+//
+//            const float radius0 = radius * (1.0f - t0);
+//            const float radius1 = radius * (1.0f - t1);
+//
+//            const Vector3 v0 = { cosf(angle0) * radius0, y0, sinf(angle0) * radius0 };
+//            const Vector3 v1 = { cosf(angle1) * radius0, y0, sinf(angle1) * radius0 };
+//            const Vector3 v2 = { cosf(angle0) * radius1, y1, sinf(angle0) * radius1 };
+//            const Vector3 v3 = { cosf(angle1) * radius1, y1, sinf(angle1) * radius1 };
+//
+//            const Color c = OKlab_lerp(color0, BLACK, t1);
+//
+//            vertices.push_back(v0); colors.push_back(c);
+//            vertices.push_back(v3); colors.push_back(c);
+//            vertices.push_back(v2); colors.push_back(c);
+//
+//            vertices.push_back(v0); colors.push_back(c);
+//            vertices.push_back(v1); colors.push_back(c);
+//            vertices.push_back(v3); colors.push_back(c);
+//        }
+//    }
+//
+//    // Skapa modell
+//    Mesh mesh = {};
+//    mesh.triangleCount = static_cast<int>(vertices.size() / 3);
+//    mesh.vertexCount = static_cast<int>(vertices.size());
+//
+//    mesh.vertices = (float*)MemAlloc(sizeof(float) * 3 * mesh.vertexCount);
+//    mesh.colors = (unsigned char*)MemAlloc(sizeof(unsigned char) * 4 * mesh.vertexCount);
+//
+//    for (int i = 0; i < mesh.vertexCount; ++i)
+//    {
+//        mesh.vertices[i * 3 + 0] = vertices[i].x;
+//        mesh.vertices[i * 3 + 1] = vertices[i].y;
+//        mesh.vertices[i * 3 + 2] = vertices[i].z;
+//
+//        mesh.colors[i * 4 + 0] = colors[i].r;
+//        mesh.colors[i * 4 + 1] = colors[i].g;
+//        mesh.colors[i * 4 + 2] = colors[i].b;
+//        mesh.colors[i * 4 + 3] = colors[i].a;
+//    }
+//
+//    UploadMesh(&mesh, false);
+//    model = LoadModelFromMesh(mesh);
+//    initialized = true;
+//}
+
+Color_Plus::Color_Plus(float b, float c, float h)
 
     : blackness(std::clamp(b, 0.0f, 1.0f)),
     chromaticness(std::clamp(c, 0.0f, 1.0f)),
-    hue(fmod(h, 2.0f * PI)) {}
+    hue(fmod(h, 2.0f * PI)) 
+{}

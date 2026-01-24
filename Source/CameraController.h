@@ -23,12 +23,14 @@ public:
     void Set_top_down();
     void Set_birds_eye();
     void Set_orbit();
-    void Set_projection(CameraMode mode);
     void Set_target(Vector3& _target) noexcept;
     void Update();
+    void Set_projection(CameraProjection projection);
 
     void Begin_3D();
     void End_3D();
+
+    void Orthographic_zoom();
 
 private:
     void Mouse_scroll_zoom();

@@ -44,6 +44,12 @@ void CameraController::Update()
     }
 }
 
+void CameraController::Set_projection(CameraProjection projection)
+{
+    camera.projection = projection;
+
+}
+
 void CameraController::Begin_3D()
 {
     BeginMode3D(camera);
@@ -53,6 +59,11 @@ void CameraController::Begin_3D()
 void CameraController::End_3D()
 {
     EndMode3D();
+
+}
+
+void CameraController::Orthographic_zoom()
+{
 
 }
 
@@ -87,7 +98,7 @@ void CameraController::Set_top_down()
 	camera.target = target;
 	camera.up = { 0.0f, 0.0f, -1.0f };
 	camera.fovy = 45.0f;
-	camera.projection = CAMERA_CUSTOM;
+	camera.projection = CAMERA_PERSPECTIVE;
     smooth = true;
 }
 
@@ -97,7 +108,7 @@ void CameraController::Set_birds_eye()
 	camera.target = Vector3{ target };
 	camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
 	camera.fovy = 55.0f;
-	camera.projection = CAMERA_CUSTOM;
+	camera.projection = CAMERA_PERSPECTIVE;
     smooth = true;
 }
 
@@ -105,11 +116,7 @@ void CameraController::Set_orbit()
 {
 }
 
-void CameraController::Set_projection(CameraMode mode)
-{
-	camera.projection = mode;
 
-}
 
 void CameraController::Set_target(Vector3& _target) noexcept
 {

@@ -1,16 +1,16 @@
 #pragma once
 #include "State.h"
-#include "Room.h"
+#include "Project.h"
 #include "CameraController.h"
 #include <vector>
 
 class FloorPlanEditor : public State
 {
-	Room& room;
+	Project& project;
 	CameraController& camera_controller;
 public:
 
-	FloorPlanEditor(Room& roomRef, CameraController& camRef);
+	FloorPlanEditor(Project& project_ref, CameraController& camera_ref);
 	std::unique_ptr<State> Update() override;
 	void Render() const override;
 

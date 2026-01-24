@@ -12,18 +12,19 @@
 
 
 
-Editor::Editor(Room& roomRef, CameraController& camRef) :
-    room(roomRef),
+Editor::Editor(Project& roomRef, CameraController& camRef) :
+    project(roomRef),
     camera_controller(camRef),
-    color_picker()
+    color_picker(),
+    handle(),
+    paint_menu(),
+    font()
 {
-
-    paints.push_back(Paint({ 250, 150, 150, 255 }));
-    paints.push_back(Paint({ 237, 237, 213, 255 }));
-    paints.push_back(Paint({ 66, 95, 150, 255 }));
+    camera_controller.Set_birds_eye();
+    camera_controller.Set_projection(CAMERA_PERSPECTIVE);
 
     Build_paint_menu();
-    camera_controller.Set_birds_eye();
+
     font = LoadFont("Assets/vcr-osd-mono.ttf");
 }
 
@@ -31,10 +32,10 @@ void Editor::Build_paint_menu()
 {
     paint_menu = Menu{};
 
-    for (const Paint& p : paints)
+    for (const Paint& p : project.paints)
     {
         paint_menu.Add_item(
-            std::make_unique<Paint_Icon>(&p, room)
+            std::make_unique<Paint_Icon>(&p, project.room)
         );
     }
 }
@@ -43,14 +44,14 @@ Paint* Editor::Selected_paint()
 {
     const int i = paint_menu.Selected_index();
     if (i < 0) return nullptr;
-    return &paints.at(i);
+    return &project.paints.at(i);
 }
 
 const Paint* Editor::Selected_paint() const
 {
     const int i = paint_menu.Selected_index();
     if (i < 0) return nullptr;
-    return &paints.at(i);
+    return &project.paints.at(i);
 }
 
 Wall* Editor::Hovered_handle()
@@ -61,7 +62,7 @@ Wall* Editor::Hovered_handle()
     Wall* hovered_wall = nullptr;
     float closest_distance_sq = radius * radius;
 
-    for (auto& wall : room.walls)
+    for (auto& wall : project.room.walls)
     {
         const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
         const float dist_sq = Vector2DistanceSqr(mouse, screen_position);
@@ -81,7 +82,7 @@ Wall* Editor::Hovered_wall()
 {
     Wall* hovered_wall = nullptr;
 
-    for (auto& wall : room.walls)
+    for (auto& wall : project.room.walls)
     {
         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
 
@@ -100,7 +101,7 @@ const Wall* Editor::Hovered_wall() const
 {
     const Wall* hovered_wall = nullptr;
 
-    for (auto& wall : room.walls)
+    for (auto& wall : project.room.walls)
     {
         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
 
@@ -135,7 +136,7 @@ Handle Editor::Make_handle(const Wall* w)
 
     _handle.Position = [w]() { return w->Center(); };
     _handle.Normal = [w]() { return w->Normal(); };
-    _handle.on_drag = [this,w](auto d) { room.Mirror_resize(w->Normal(), d); };
+    _handle.on_drag = [this,w](auto d) { project.room.Mirror_resize(w->Normal(), d); }; //TODO: should room really Mirror resize() itself? ...no
     _handle.last_hit = _handle.Position();
 
     return _handle;
@@ -146,7 +147,7 @@ std::unique_ptr<State> Editor::Update()
 {
     if (IsKeyReleased(KEY_TAB))
     {
-        return std::make_unique<FloorPlanEditor>(room, camera_controller);
+        return std::make_unique<FloorPlanEditor>(project, camera_controller);
     }
 
     camera_controller.Update();
@@ -161,7 +162,7 @@ void Editor::Draw_UI() const
     constexpr float radius = 10.0f;
     float closest_distance_sq = radius * radius;
 
-    for (const auto& wall : room.walls)
+    for (const auto& wall : project.room.walls)
     {
         const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
         const float dist_sq = Vector2DistanceSqr(GetMousePosition(), screen_position);
@@ -258,7 +259,7 @@ void Editor::Render() const
 {
     camera_controller.Begin_3D();
 
-    room.Draw_walls();
+    project.room.Draw_walls();
     
     const Wall* hovered_wall = Hovered_wall();
     const Paint* selected_paint = Selected_paint();

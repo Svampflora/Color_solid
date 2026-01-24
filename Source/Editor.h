@@ -7,7 +7,7 @@
 #pragma warning(pop)
 
 #include "State.h"
-#include "Room.h"
+#include "Project.h"
 #include "CameraController.h"
 #include "Color_picker.h"
 
@@ -17,20 +17,19 @@ struct Camera3D;
 
 class Editor : public State
 {
+    Project& project;
 	CameraController& camera_controller;
-    Room& room;
     Color_picker color_picker;
     Handle handle;
-    std::vector<Paint> paints;
     Menu paint_menu;
     Font font; 
 
-    float min_size = 1.0f;
+    float min_size = 1.0f; //TODO: move. settings?
     float max_size = 10.0f;
 
 public:
 
-    Editor(Room& room_ref, CameraController& camera_controller_ref);
+    Editor(Project& project_ref, CameraController& camera_controller_ref);
     std::unique_ptr<State> Update() override;
     void Render() const override;
 

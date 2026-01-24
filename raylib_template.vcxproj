@@ -188,6 +188,7 @@
     <ClInclude Include="Source\Menu.h" />
     <ClInclude Include="Source\Paint.h" />
     <ClInclude Include="Source\Pattern.h" />
+    <ClInclude Include="Source\Project.h" />
     <ClInclude Include="Source\RayUtils.h" />
     <ClInclude Include="Source\Room.h" />
     <ClInclude Include="Source\Editor.h" />

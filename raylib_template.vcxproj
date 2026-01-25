@@ -178,7 +178,7 @@
     <ClCompile Include="Source\Pattern.cpp" />
     <ClCompile Include="Source\RayUtils.cpp" />
     <ClCompile Include="Source\Room.cpp" />
-    <ClCompile Include="Source\Startscreen.cpp" />
+    <ClCompile Include="Source\PaintEditor.cpp" />
     <ClCompile Include="Source\Utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -196,7 +196,7 @@
     <ClInclude Include="Source\FloorPlanEditor.h" />
     <ClInclude Include="Source\Application.h" />
     <ClInclude Include="Source\Color_Picker.h" />
-    <ClInclude Include="Source\Startscreen.h" />
+    <ClInclude Include="Source\PaintEditor.h" />
     <ClInclude Include="Source\State.h" />
     <ClInclude Include="Source\Utilities.h" />
     <ClInclude Include="Source\Window.h" />

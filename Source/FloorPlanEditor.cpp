@@ -6,7 +6,7 @@
 #include "raylib.h"
 #pragma warning(pop)
 
-#include "Startscreen.h"
+#include "PaintEditor.h"
 #include "Editor.h"
 #include <fstream>
 #include <iostream>

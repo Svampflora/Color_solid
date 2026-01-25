@@ -6,16 +6,16 @@
 #include "raymath.h"
 #pragma warning(pop)
 
-#include "FloorPlanEditor.h"
 #include "Utilities.h"
 #include "RayUtils.h"
+#include "FloorPlanEditor.h"
+#include "PaintEditor.h"
 
 
 
 Editor::Editor(Project& roomRef, CameraController& camRef) :
     project(roomRef),
     camera_controller(camRef),
-    color_picker(),
     handle(),
     paint_menu(),
     font()
@@ -150,10 +150,14 @@ std::unique_ptr<State> Editor::Update()
         return std::make_unique<FloorPlanEditor>(project, camera_controller);
     }
 
+    if (IsKeyReleased(KEY_P))
+    {
+        return std::make_unique<PaintEditor>(project, camera_controller);
+    }
+
     camera_controller.Update();
     Edit();
     paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
-    color_picker.Update(camera_controller.camera);
     return nullptr;
 }
 

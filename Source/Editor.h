@@ -9,7 +9,7 @@
 #include "State.h"
 #include "Project.h"
 #include "CameraController.h"
-#include "Color_picker.h"
+
 
 struct Camera3D;
 
@@ -19,7 +19,6 @@ class Editor : public State
 {
     Project& project;
 	CameraController& camera_controller;
-    Color_picker color_picker;
     Handle handle;
     Menu paint_menu;
     Font font; 
@@ -43,8 +42,8 @@ private:
 
     
     void Edit();
-    void Select_handle();
     void Build_paint_menu();
+    void Select_handle();
     void Select_paint() noexcept;
     void Paint_surface();
     void Drag_handles();

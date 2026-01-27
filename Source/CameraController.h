@@ -25,6 +25,7 @@ public:
     void Set_orbit();
     void Set_target(Vector3& _target) noexcept;
     void Update();
+    void Update_zoom();
     void Set_projection(CameraProjection projection);
 
     void Begin_3D();

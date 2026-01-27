@@ -408,110 +408,6 @@ RGB Color_wheel::get_color(float radians) const noexcept
 
     return BLACK;
 }
-//
-//NCS_Color::NCS_Color(const std::string& ncsStr)
-//{
-//    parse_from_string(ncsStr);
-//}
-//
-//NCS_Color::NCS_Color(int _blackness, int _chromaticness, const std::string& _hueCode)
-//{
-//    blackness = std::min(_blackness, 99);
-//    chromaticness = std::min(_chromaticness, 99);
-//    hueCode = (_chromaticness == 0) ? "N" : _hueCode;
-//    rgb = NCS_To_RGB(to_string());
-//}
-//
-//Color_Plus NCS_Color::to_NCSPlus() const
-//{
-//
-//    return { blackness * 0.1f, chromaticness * 0.1f, hueCode_to_radians(hueCode) };
-//}
-//
-//std::string NCS_Color::to_string() const
-//{
-//    char buf[32];
-//    std::snprintf(buf, sizeof(buf), "S %02d%02d-%s", blackness, chromaticness, hueCode.c_str());
-//    return std::string(buf);
-//}
-//
-//void NCS_Color::draw(Vector2 position, Vector2 size) const
-//{
-//    DrawRectangleV(position, size, rgb);
-//    DrawTextF(this->to_string().c_str(), position.x, position.y + size.y, narrow_cast<int>(0.5f * size.y), WHITE);
-//}
-//
-//void NCS_Color::parse_from_string(const std::string& ncsStr)
-//{
-//    std::regex re("S\\s?(\\d{2})(\\d{2})-([A-Z0-9]+)");
-//    std::smatch match;
-//
-//    if (std::regex_match(ncsStr, match, re))
-//    {
-//        blackness = std::stoi(match[1]);
-//        chromaticness = std::stoi(match[2]);
-//        hueCode = (chromaticness == 0) ? "N" : match[3].str();
-//        rgb = NCS_To_RGB(ncsStr);
-//
-//        blackness = std::min(blackness, 99);
-//        chromaticness = std::min(chromaticness, 99);
-//
-//    }
-//    else
-//    {
-//        throw std::invalid_argument("Ogiltig NCS-kod: " + ncsStr);
-//    }
-//}
-//
-//float NCS_Color::hueCode_to_radians(const std::string& _hueCode) const
-//{
-//    if (_hueCode == "N") return 0.0f;
-//
-//    std::map<std::string, float> hueAngles = hue_Angles();
-//    std::regex re(R"(([A-Z]+)(\d{2})([A-Z]+))");
-//    std::smatch match;
-//
-//    if (std::regex_match(_hueCode, match, re))
-//    {
-//        std::string base1 = match[1];
-//        const int percent = std::stoi(match[2]);
-//        std::string base2 = match[3];
-//
-//        const float angle1 = hueAngles.at(base1);
-//        const float angle2 = hueAngles.at(base2);
-//
-//        const float t = percent / 100.0f;
-//
-//        // Interpolera vinklar cirkulärt
-//        float delta = angle2 - angle1;
-//        if (delta > PI) delta -= 2 * PI;
-//        if (delta < -PI) delta += 2 * PI;
-//
-//        const float result = angle1 + delta * t;
-//
-//        // Wrapa tillbaka till 0–2π
-//        return fmod((result + 2 * PI), (2 * PI));
-//    }
-//
-//    // Om det är bara en basfärg
-//    if (hueAngles.count(_hueCode))
-//    {
-//        return hueAngles.at(_hueCode);
-//    }
-//
-//    throw std::invalid_argument("Ogiltig hue-kod: " + _hueCode);
-//}
-//
-//std::map<std::string, float> NCS_Color::hue_Angles() const
-//{
-//    return
-//    {
-//        {"Y", 0.0f},
-//        {"R", PI / 2.0f},
-//        {"B", PI},
-//        {"G", 3 * PI / 2.0f}
-//    };
-//};
 
 
 Vector3 midpoint(Vector3 v1, Vector3 v2)
@@ -519,10 +415,11 @@ Vector3 midpoint(Vector3 v1, Vector3 v2)
     return Vector3Divide(Vector3Add(v1, v2), Vector3{0.0f, 0.0f, 0.0f});
 }
 
-
+//+++++++++++++SOLID+++++++++++++++++
 
 void Color_solid::Make_nodes()
 {
+    constexpr Vector3 center = { 0.0f, 0.0f, 0.0f };
     constexpr float SQRT3_OVER_2 = 0.866025403784f;
 
     const float half_height = height * 0.5f;
@@ -586,24 +483,25 @@ void Color_solid::Draw() const
 
     }
 
-    DrawCircle3D(center, radius, Vector3{ 1,0,0 }, 90.0f, WHITE);
-    DrawLine3D(Bottom(), Top(), WHITE);
+    DrawCircle3D({ 0.0f, 0.0f, 0.0f }, radius, Vector3{ 1,0,0 }, 90.0f, WHITE);
+    //DrawLine3D(Bottom(), Top(), WHITE);
 }
 
 
 
-Vector3 Color_solid::Top() const
-{
-    return Vector3Add(center, Vector3Scale(rotation, half_of(height)));
-}
+//Vector3 Color_solid::Top() const
+//{
+//    return Vector3Add({ 0.0f, 0.0f, 0.0f }, Vector3Scale(rotation, half_of(height)));
+//   
+//}
 
-Vector3 Color_solid::Axis_point(float normal) const
-{
-    const float factor = normal * height;
-    return Vector3Add(Bottom(), Vector3Scale(rotation, factor));
-}
-
-Vector3 Color_solid::Bottom() const
-{
-    return Vector3Subtract(center, Vector3Scale(rotation, half_of(height)));
-}
+//Vector3 Color_solid::Axis_point(float normal) const
+//{
+//    const float factor = normal * height;
+//    return Vector3Add(Bottom(), Vector3Scale(rotation, factor));
+//}
+//
+//Vector3 Color_solid::Bottom() const
+//{
+//    return Vector3Subtract({ 0.0f, 0.0f, 0.0f }, Vector3Scale(rotation, half_of(height)));
+//}

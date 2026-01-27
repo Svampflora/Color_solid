@@ -457,6 +457,23 @@ void DrawTriangleFan3D(const std::vector<Vector3>& points, Color color)
 
 
 
+Quaternion IntegrateRotation(Quaternion current, Vector3 angular_velocity, float dt)
+{
+    const float speed = Vector3Length(angular_velocity);
+
+    if (speed < 0.00001f)
+        return current;
+
+    const Vector3 axis = Vector3Scale(angular_velocity, 1.0f / speed);
+    const float angle = speed * dt;  // radians this frame
+    const Quaternion dq = QuaternionFromAxisAngle(axis, angle);
+
+    // Apply incremental rotation
+    current = QuaternionMultiply(dq, current);
+
+    return QuaternionNormalize(current);
+}
+
 Vector3 PolygonNormal(const std::vector<Vector3>& vertices)
 {
     if (vertices.size() < 3) return Vector3Zero();

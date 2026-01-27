@@ -44,6 +44,22 @@ void CameraController::Update()
     }
 }
 
+void CameraController::Update_zoom()
+{
+    Mouse_scroll_zoom();
+    const Vector2 target_angle = camera_angle;
+    const float   target_distance = camera_distance;
+    const Vector3 target_pos
+    {
+        target.x + target_distance * cosf(target_angle.y) * sinf(target_angle.x),
+        target.y + target_distance * sinf(target_angle.y),
+        target.z + target_distance * cosf(target_angle.y) * cosf(target_angle.x)
+    };
+   
+    camera.position = target_pos;
+    camera.target = target;
+}
+
 void CameraController::Set_projection(CameraProjection projection)
 {
     camera.projection = projection;

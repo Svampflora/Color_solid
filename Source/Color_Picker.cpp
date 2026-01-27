@@ -4,6 +4,7 @@
 #include <codeanalysis\warnings.h>
 #pragma warning(push)
 #pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
+//#include "raylib.h"
 #include "raymath.h"
 #pragma warning(pop)
 
@@ -46,20 +47,87 @@ void remove_if(Container& container, Predicate predicate)
 
 [[gsl::suppress(f.6)]]
 Color_picker::Color_picker() :
-	solid({ 0.0f, 0.0f, 0.0f }, 2.0f, 3.0f, 12, 6, Color_wheel())
-
-{}
+	solid( 2.0f, 3.0f, 12, 6, Color_wheel()),
+	rotation(QuaternionIdentity()),
+	target_rotation(QuaternionIdentity()),
+	position{ 0.0f, 0.0f, 0.0f },
+	angular_velocity{ 0.0f, 0.0f, 0.0f }
+{
+}
 
 void Color_picker::Update(const Camera& camera)
 {
+	Mouse_rotation();
+	Node_selection(camera);
+	//solid.rotation = Vector3RotateByQuaternion()
+}
+
+
+
+void Color_picker::Draw()  const
+{
+	for (const auto& node : solid.color_nodes)
+	{
+		// rotate local ? world
+		const Vector3 world_pos =
+			Vector3Add(position,
+				Vector3RotateByQuaternion(node.position, rotation));
+
+		DrawSphere(world_pos, COLOR_NODE_RADIUS, node.color);
+	}
+	//solid.Draw();
+
+	//if (hovered > -1)
+	//{
+	//	const Color_node node = solid.node(hovered);
+	//	DrawSphere(node.position, COLOR_NODE_RADIUS * 1.2f, node.color); //solid.draw_node(index, size)?
+
+	//}
+}
+
+void Color_picker::Mouse_rotation()
+{
+	if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
+	{
+		const Vector2 delta = GetMouseDelta();
+
+		Vector3 axis = { delta.y, delta.x, 0 };
+		if (Vector3LengthSqr(axis) > 0.00001f)
+		{
+			axis = Vector3Normalize(axis);
+			const float angle = Vector2Length(delta) * ROTATION_SENSATIVITY;
+
+			const Quaternion dq = QuaternionFromAxisAngle(axis, angle);
+			target_rotation = QuaternionMultiply(dq, target_rotation);
+
+			angular_velocity = Vector3Add(angular_velocity,
+				Vector3Scale(axis, angle));
+		}
+	}
+	else
+	{
+		angular_velocity = Vector3Scale(angular_velocity, DAMPING);
+	}
+
+	rotation = IntegrateRotation( rotation, angular_velocity, GetFrameTime());
+}
+
+void Color_picker::Node_selection(const Camera& camera)
+{
+
+
 
 	const Ray ray = GetMouseRay(GetMousePosition(), camera);
-	
-	float closest_distance = Vector3Distance(camera.position, solid.center); //TODO: make default distance longer
+
+	float closest_distance = Vector3Distance(camera.position, position); //TODO: make default distance longer
 	int i = 0;
 	for (const auto& node : solid.color_nodes)
 	{
-		const RayCollision collision = GetRayCollisionSphere(ray, node.position, COLOR_NODE_RADIUS);
+		const Vector3 world_pos =
+			Vector3Add(position,
+				Vector3RotateByQuaternion(node.position, rotation));
+
+		const RayCollision collision = GetRayCollisionSphere(ray, world_pos, COLOR_NODE_RADIUS);
 
 
 		if (collision.hit)
@@ -75,23 +143,8 @@ void Color_picker::Update(const Camera& camera)
 		i++;
 	}
 
-	if (closest_distance == Vector3Distance(camera.position, solid.center))
+	if (closest_distance == Vector3Distance(camera.position, position))
 	{
 		hovered = -1;
-	}
-
-}
-
-
-
-void Color_picker::Draw()  const
-{
-	solid.Draw();
-
-	if (hovered > -1)
-	{
-		const Color_node node = solid.node(hovered);
-		DrawSphere(node.position, COLOR_NODE_RADIUS * 1.2f, node.color); //solid.draw_node(index, size)?
-
 	}
 }

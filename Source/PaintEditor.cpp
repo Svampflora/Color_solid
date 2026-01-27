@@ -10,6 +10,9 @@ PaintEditor::PaintEditor(Project& project_ref, CameraController& camera_ref) :
 	camera_controller(camera_ref)
 {
 	Build_paint_menu();
+
+	camera_controller.Set_birds_eye();
+	camera_controller.Set_projection(CAMERA_PERSPECTIVE);
 }
 
 void PaintEditor::Build_paint_menu()
@@ -32,7 +35,7 @@ std::unique_ptr<State> PaintEditor::Update()
 	}
 	color_picker.Update(camera_controller.camera);
 	paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
-
+	camera_controller.Update_zoom();
 	return nullptr;
 }
 

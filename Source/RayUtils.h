@@ -41,7 +41,9 @@ void DrawQuadLinesEx3D(const std::array<Vector3, 4>& points, Color color);
 void DrawTriangleFan3D(const std::vector<Vector3>& points, Color color);
 void DrawCubeWires3D(Vector3 position, float width, float height, float depth, Color tint, const Matrix& rotation);
 
-
+Quaternion IntegrateRotation(Quaternion current,
+    Vector3 angular_velocity,
+    float dt);
 Vector3 PolygonNormal(const std::vector<Vector3>& vertices);
 float PolygonArea(const std::vector<Vector3>& vertices);
 float TriangleArea(const Vector3& a, const Vector3& b, const Vector3& c);

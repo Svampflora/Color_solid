@@ -55,14 +55,40 @@ Color_picker::Color_picker() :
 {
 }
 
-void Color_picker::Update(const Camera& camera)
+RGB Color_picker::Get_color()
 {
-	Mouse_rotation();
-	Node_selection(camera);
-	//solid.rotation = Vector3RotateByQuaternion()
+	return solid.node(hovered).color;
 }
 
+void Color_picker::Update(const Camera& camera)
+{
+	Mouse_rotation(camera);
+	Node_selection(camera);
+	
+	////++++++++++++++++++++++++++++++++
+	//const Quaternion q_delta = QuaternionMultiply(
+	//	target_rotation,
+	//	QuaternionInvert(rotation)
+	//);
 
+	//Vector3 axis;
+	//float angle;
+	//QuaternionToAxisAngle(q_delta, &axis, &angle);
+
+
+
+	//angular_velocity = Vector3Add(
+	//	angular_velocity,
+	//	Vector3Scale(axis, angle * STIFFNESS * GetFrameTime())
+	//);
+
+	//angular_velocity = Vector3Scale(
+	//	angular_velocity,
+	//	1.0f - DAMPING * GetFrameTime()
+	//);
+
+	//rotation = IntegrateRotation(rotation, angular_velocity, GetFrameTime());
+}
 
 void Color_picker::Draw()  const
 {
@@ -75,48 +101,48 @@ void Color_picker::Draw()  const
 
 		DrawSphere(world_pos, COLOR_NODE_RADIUS, node.color);
 	}
-	//solid.Draw();
 
-	//if (hovered > -1)
-	//{
-	//	const Color_node node = solid.node(hovered);
-	//	DrawSphere(node.position, COLOR_NODE_RADIUS * 1.2f, node.color); //solid.draw_node(index, size)?
+	if (hovered > -1)
+	{
+		const Color_node node = solid.node(hovered);
+		const Vector3 world_pos =
+			Vector3Add(position,
+				Vector3RotateByQuaternion(node.position, rotation));
+		DrawSphere(world_pos, COLOR_NODE_RADIUS * 1.2f, node.color);
 
-	//}
+	}
 }
 
-void Color_picker::Mouse_rotation()
+void Color_picker::Mouse_rotation(const Camera& camera)
 {
-	if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
-	{
-		const Vector2 delta = GetMouseDelta();
+	if (!IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
+		return;
 
-		Vector3 axis = { delta.y, delta.x, 0 };
-		if (Vector3LengthSqr(axis) > 0.00001f)
-		{
-			axis = Vector3Normalize(axis);
-			const float angle = Vector2Length(delta) * ROTATION_SENSATIVITY;
+	const Vector2 delta = GetMouseDelta();
+	if (Vector2Length(delta) < 0.001f)
+		return;
 
-			const Quaternion dq = QuaternionFromAxisAngle(axis, angle);
-			target_rotation = QuaternionMultiply(dq, target_rotation);
+	const float dist = Vector3Distance(camera.position, position);
+	const float sens = STIFFNESS * dist * 0.2f;
 
-			angular_velocity = Vector3Add(angular_velocity,
-				Vector3Scale(axis, angle));
-		}
-	}
-	else
-	{
-		angular_velocity = Vector3Scale(angular_velocity, DAMPING);
-	}
+	const Vector3 world_up = { 0, 1, 0 };   
+	const Vector3 cam_right = Vector3Normalize(Vector3CrossProduct(camera.up, Vector3Subtract(camera.target, camera.position)));
+	 
+	const float yaw = delta.x * sens;
+	const float pitch = -delta.y * sens;
+	 
+	const Quaternion q_yaw = QuaternionFromAxisAngle(world_up, yaw);
+	const Quaternion q_pitch = QuaternionFromAxisAngle(cam_right, pitch);
 
-	rotation = IntegrateRotation( rotation, angular_velocity, GetFrameTime());
+	rotation = QuaternionMultiply(q_yaw, rotation);
+	rotation = QuaternionMultiply(q_pitch, rotation);
+
+
+
 }
 
 void Color_picker::Node_selection(const Camera& camera)
 {
-
-
-
 	const Ray ray = GetMouseRay(GetMousePosition(), camera);
 
 	float closest_distance = Vector3Distance(camera.position, position); //TODO: make default distance longer
@@ -128,7 +154,6 @@ void Color_picker::Node_selection(const Camera& camera)
 				Vector3RotateByQuaternion(node.position, rotation));
 
 		const RayCollision collision = GetRayCollisionSphere(ray, world_pos, COLOR_NODE_RADIUS);
-
 
 		if (collision.hit)
 		{

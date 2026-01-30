@@ -13,8 +13,8 @@
 
 
 
-Editor::Editor(Project& roomRef, CameraController& camRef) :
-    project(roomRef),
+Editor::Editor(Project& project_ref, CameraController& camRef) :
+    project(project_ref),
     camera_controller(camRef),
     handle(),
     paint_menu(),
@@ -22,6 +22,7 @@ Editor::Editor(Project& roomRef, CameraController& camRef) :
 {
     camera_controller.Set_birds_eye();
     camera_controller.Set_projection(CAMERA_PERSPECTIVE);
+    //camera_controller.Set_target(project_ref.room.Center);
 
     Build_paint_menu();
 

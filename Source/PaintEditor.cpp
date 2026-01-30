@@ -13,6 +13,7 @@ PaintEditor::PaintEditor(Project& project_ref, CameraController& camera_ref) :
 
 	camera_controller.Set_birds_eye();
 	camera_controller.Set_projection(CAMERA_PERSPECTIVE);
+	camera_controller.Set_target(color_picker.position);
 }
 
 void PaintEditor::Build_paint_menu()
@@ -34,8 +35,35 @@ std::unique_ptr<State> PaintEditor::Update()
 		return std::make_unique<Editor>(project, camera_controller);
 	}
 	color_picker.Update(camera_controller.camera);
-	paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
 	camera_controller.Update_zoom();
+
+
+	Paint* selected_paint;
+	const int i = paint_menu.Selected_index();
+	if (i < 0)
+	{
+		selected_paint = nullptr;
+	}
+	else
+	{
+
+		selected_paint = &project.paints.at(i);
+	}
+
+	if (selected_paint)
+	{
+		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+		{
+			const int selected = color_picker.Hovered_index();
+			if (selected > -1)
+			{
+				const RGB color = color_picker.Get_color();
+				selected_paint->color = color;
+			}
+		}
+	}
+	paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position(make member paint_menu_position) //Todo: needs to be put after selectionlogic due to internal input-handling
+
 	return nullptr;
 }
 

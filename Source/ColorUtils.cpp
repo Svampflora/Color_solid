@@ -486,22 +486,3 @@ void Color_solid::Draw() const
     DrawCircle3D({ 0.0f, 0.0f, 0.0f }, radius, Vector3{ 1,0,0 }, 90.0f, WHITE);
     //DrawLine3D(Bottom(), Top(), WHITE);
 }
-
-
-
-//Vector3 Color_solid::Top() const
-//{
-//    return Vector3Add({ 0.0f, 0.0f, 0.0f }, Vector3Scale(rotation, half_of(height)));
-//   
-//}
-
-//Vector3 Color_solid::Axis_point(float normal) const
-//{
-//    const float factor = normal * height;
-//    return Vector3Add(Bottom(), Vector3Scale(rotation, factor));
-//}
-//
-//Vector3 Color_solid::Bottom() const
-//{
-//    return Vector3Subtract({ 0.0f, 0.0f, 0.0f }, Vector3Scale(rotation, half_of(height)));
-//}

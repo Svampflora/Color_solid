@@ -159,9 +159,7 @@ public:
 
     void Draw() const;
     Color_node node(size_t index) const { return color_nodes.at(index); }
-    //Vector3 Bottom() const;
-    //Vector3 Top() const;
-    //Vector3 Axis_point(float normal) const;
+
 
 private:
     void Make_nodes();

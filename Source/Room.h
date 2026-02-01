@@ -80,6 +80,8 @@ struct Aperture
     virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     virtual void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 
+    void Draw_2D(Vector2 position) const;
+
 };
 
 struct Entrance : public Aperture
@@ -141,6 +143,7 @@ struct Wall : Paintable
     Vector3 Normal() const;
     Vector3 Floor_edge() const;
     Vector3 Up() const;
+    Vector2 Normalized_coordinate(const Vector3& position) const;
     float Length() const;
     float Height() const;
     float Total_area() const;
@@ -181,4 +184,22 @@ struct Room : Paintable
     float Liters_used(const Paint* target) const override;
     void Mirror_resize(const Vector3& direction, const Vector3& move_delta);
     void Draw_walls() const;
+    Wall* Hovered_wall(const Camera& camera, const Ray& ray)
+    {
+        Wall* hovered_wall = nullptr;
+
+        for (auto& wall : walls)
+        {
+
+            if (RayIntersectsWall(ray, wall).hit)
+            {
+                
+                if (wall.Facing_camera(camera.position))
+                {
+                    hovered_wall = &wall;
+                }
+            }
+        }
+        return hovered_wall;
+    }
 };

@@ -101,6 +101,11 @@ void Aperture::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall
     DrawQuadLinesEx3D({ w_br_away, w_tr_away, w_tr, w_br }, color);
 }
 
+void Aperture::Draw_2D(Vector2 position) const 
+{
+    DrawRectangleV(position, { width, height }, WHITE);
+}
+
 
 std::vector<std::array<Vector3, 4>> Aperture::Carve(const std::array<Vector3, 4>& main_quad, const std::array<Vector3, 4>& aperture_quad) const
 {
@@ -563,6 +568,24 @@ Vector3 Wall::Up() const
 {
     auto q = Quad();
     return Vector3Normalize(Vector3Subtract(q[2], q[1])); // bl -> tl
+}
+
+Vector2 Wall::Normalized_coordinate(const Vector3& position) const
+{
+    const std::array<Vector3, 4> quad = Quad();
+
+    const Vector3 right = Vector3Normalize(Vector3Subtract(quad[1], quad[0]));
+    const Vector3 up = Vector3Normalize(Vector3Subtract(quad[3], quad[0]));
+
+    const float wall_width = Vector3Distance(quad[0], quad[1]);
+    const float wall_height = Vector3Distance(quad[0], quad[3]);
+
+    const Vector3 rel = Vector3Subtract(position, quad[0]);
+
+    const float u = Vector3DotProduct(rel, right) / wall_width;
+    const float v = Vector3DotProduct(rel, up) / wall_height;
+
+    return { u, v };
 }
 
 const Vector3& Wall::Vertex(size_t i) const

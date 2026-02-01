@@ -74,5 +74,6 @@ void PaintEditor::Render() const
 	camera_controller.End_3D();
 
 	paint_menu.Draw({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
+	
 
 }

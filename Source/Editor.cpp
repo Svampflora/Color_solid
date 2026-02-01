@@ -25,6 +25,7 @@ Editor::Editor(Project& project_ref, CameraController& camRef) :
     //camera_controller.Set_target(project_ref.room.Center);
 
     Build_paint_menu();
+    //Build_aperture_menu();
 
     font = LoadFont("Assets/vcr-osd-mono.ttf");
 }
@@ -40,6 +41,19 @@ void Editor::Build_paint_menu()
         );
     }
 }
+
+//void Editor::Build_aperture_menu()
+//{
+//    aperture_menu = Menu{};
+//    aperture_menu.Add_item(std::make_unique<Tool_Icon>(&editor, i));
+//
+//    for (const Paint& p : project.paints)
+//    {
+//        paint_menu.Add_item(
+//            std::make_unique<Paint_Icon>(&p, project.room)
+//        );
+//    }
+//}
 
 Paint* Editor::Selected_paint()
 {
@@ -79,17 +93,17 @@ Wall* Editor::Hovered_handle()
 
 
 
-Wall* Editor::Hovered_wall()
+const Wall* Get_Hovered_wall(const Camera& camera, const std::vector<Wall>& walls)
 {
-    Wall* hovered_wall = nullptr;
+    const Wall* hovered_wall = nullptr;
 
-    for (auto& wall : project.room.walls)
+    for (auto& wall : walls)
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
+        const Ray ray = GetMouseRay(GetMousePosition(), camera);
 
         if (RayIntersectsWall(ray, wall).hit)
         {
-            if (wall.Facing_camera(camera_controller.camera.position)) //TODO: create .camera_position()
+            if (wall.Facing_camera(camera.position))
             {
                 hovered_wall = &wall;
             }
@@ -98,9 +112,9 @@ Wall* Editor::Hovered_wall()
     return hovered_wall;
 }
 
-const Wall* Editor::Hovered_wall() const
+Wall* Editor::Hovered_wall()
 {
-    const Wall* hovered_wall = nullptr;
+    Wall* hovered_wall = nullptr;
 
     for (auto& wall : project.room.walls)
     {
@@ -266,7 +280,7 @@ void Editor::Render() const
 
     project.room.Draw_walls();
     
-    const Wall* hovered_wall = Hovered_wall();
+    const Wall* hovered_wall = Get_Hovered_wall(camera_controller.camera, project.room.walls);
     const Paint* selected_paint = Selected_paint();
     
     if (selected_paint && hovered_wall)

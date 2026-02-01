@@ -94,7 +94,6 @@ void Color_picker::Draw()  const
 {
 	for (const auto& node : solid.color_nodes)
 	{
-		// rotate local ? world
 		const Vector3 world_pos =
 			Vector3Add(position,
 				Vector3RotateByQuaternion(node.position, rotation));
@@ -111,34 +110,31 @@ void Color_picker::Draw()  const
 		DrawSphere(world_pos, COLOR_NODE_RADIUS * 1.2f, node.color);
 
 	}
+
+	
 }
 
 void Color_picker::Mouse_rotation(const Camera& camera)
 {
-	if (!IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
-		return;
+    if (!IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) return;
 
-	const Vector2 delta = GetMouseDelta();
-	if (Vector2Length(delta) < 0.001f)
-		return;
-
-	const float dist = Vector3Distance(camera.position, position);
-	const float sens = STIFFNESS * dist * 0.2f;
-
-	const Vector3 world_up = { 0, 1, 0 };   
-	const Vector3 cam_right = Vector3Normalize(Vector3CrossProduct(camera.up, Vector3Subtract(camera.target, camera.position)));
+    const Vector2 delta = GetMouseDelta();
 	 
-	const float yaw = delta.x * sens;
-	const float pitch = -delta.y * sens;
+    const Vector3 localRight = Vector3RotateByQuaternion({1,0,0}, rotation);
+    const Vector3 localUp    = Vector3RotateByQuaternion({0,1,0}, rotation);
 	 
-	const Quaternion q_yaw = QuaternionFromAxisAngle(world_up, yaw);
-	const Quaternion q_pitch = QuaternionFromAxisAngle(cam_right, pitch);
+	const Vector3 world_up = { 0, 1, 0 };                  // Y axis (spin)
+	const Vector3 cam_right = Vector3Normalize(Vector3CrossProduct(camera.up, Vector3Subtract(camera.target, camera.position))); // tilt axis
 
-	rotation = QuaternionMultiply(q_yaw, rotation);
-	rotation = QuaternionMultiply(q_pitch, rotation);
+    const float yaw   = delta.x * STIFFNESS;
+    const float pitch = -delta.y * STIFFNESS;
 
+	 
+    const Quaternion qYaw   = QuaternionFromAxisAngle(localUp, yaw);
+    const Quaternion qPitch = QuaternionFromAxisAngle(cam_right, pitch);
 
-
+    rotation = QuaternionMultiply(qYaw,		rotation);
+    rotation = QuaternionMultiply(qPitch,	rotation);
 }
 
 void Color_picker::Node_selection(const Camera& camera)

@@ -32,46 +32,35 @@ public:
 
     virtual void Update(const Camera& camera, Project& project) = 0;
     virtual void DrawOverlay() const {}
+
+    virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
+
 };
 
 class Add_Door : public Tool
 {
 public:
-    const char* Name() const override { return "Door"; }
+    const char* Name() const noexcept override { return "Door"; }
 
     void Update(const Camera& camera, Project& project) override
     {
-        Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Ray ray = GetMouseRay(GetMousePosition(), camera);
         Wall* wall = project.room.Hovered_wall(camera, ray);
         if (!wall) return;
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            RayCollision collision = RayIntersectsWall(ray, *wall); 
+            const RayCollision collision = RayIntersectsWall(ray, *wall); 
             float localX = wall->Normalized_coordinate(collision.point).x;
             wall->doors.emplace_back(localX, wall->Height());
         }
     }
+
+    void Draw_swatch(Rectangle rect) const noexcept override;
+
 };
 
-//struct Tool_Icon : Menu_Icon
-//{
-//    const Tool* tool;
-//
-//    explicit Tool_Icon(const Tool* t) noexcept :
-//        tool(t)
-//    {}
-//
-//    void Draw(Rectangle rect, bool selected) const override
-//    {
-//        tool->(rect);
-//
-//        if (selected)
-//            DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
-//
-//        tool->Draw_info(rect);
-//    }
-//};
+
 
 class Editor : public State
 {
@@ -80,7 +69,9 @@ class Editor : public State
     Handle handle;
     Menu paint_menu;
     Feature_settings feature_settings;
-    Menu aperture_menu;
+    std::vector<std::unique_ptr<Tool>> tools;
+    Tool* active_tool = nullptr;
+    Menu tool_menu;
     Font font; 
 
     float min_size = 1.0f; //TODO: move. settings?
@@ -92,6 +83,10 @@ public:
     std::unique_ptr<State> Update() override;
     void Render() const override;
 
+    Tool& Get_tool(size_t i)
+    {
+        return *tools.at(i);
+    }
 private:
     Handle Make_handle(const Wall* wall);
     //const Wall* Hovered_wall() const;
@@ -100,13 +95,41 @@ private:
     const Paint* Selected_paint() const;
     Paint* Selected_paint();
 
+    void Add_tool(std::unique_ptr<Tool> tool)
+    {
+        if (!active_tool) active_tool = tool.get();
+        tools.push_back(std::move(tool));
+    }
+    void Make_tools();
     
     void Edit();
     void Build_paint_menu();
-    //void Build_aperture_menu();
+    void Build_tool_menu();
     void Select_handle();
     void Select_paint() noexcept;
     void Paint_surface();
     void Drag_handles();
     void Draw_UI() const;
+};
+
+struct Tool_Icon : Menu_Icon
+{
+    Editor* editor;
+    size_t tool_index;
+
+    Tool_Icon(Editor* e, size_t i) noexcept
+        : editor(e), tool_index(i) {}
+
+    void Draw(Rectangle rect, bool selected) const override
+    {
+        editor->Get_tool(tool_index).Draw_swatch(rect);
+
+        if (selected)
+            DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
+    }
+
+    //void On_click() override
+    //{
+    //    editor->SetActiveTool(tool_index);
+    //}
 };

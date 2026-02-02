@@ -24,8 +24,10 @@ Editor::Editor(Project& project_ref, CameraController& camRef) :
     camera_controller.Set_projection(CAMERA_PERSPECTIVE);
     //camera_controller.Set_target(project_ref.room.Center);
 
+    Make_tools();
+
     Build_paint_menu();
-    //Build_aperture_menu();
+    Build_tool_menu();
 
     font = LoadFont("Assets/vcr-osd-mono.ttf");
 }
@@ -42,18 +44,22 @@ void Editor::Build_paint_menu()
     }
 }
 
-//void Editor::Build_aperture_menu()
-//{
-//    aperture_menu = Menu{};
-//    aperture_menu.Add_item(std::make_unique<Tool_Icon>(&editor, i));
-//
-//    for (const Paint& p : project.paints)
-//    {
-//        paint_menu.Add_item(
-//            std::make_unique<Paint_Icon>(&p, project.room)
-//        );
-//    }
-//}
+void Editor::Make_tools()
+{
+    Add_tool(std::make_unique<Add_Door>());
+
+    active_tool = tools.front().get();
+}
+
+void Editor::Build_tool_menu()
+{
+    tool_menu = Menu{};
+
+    for (size_t i = 0; i < tools.size(); ++i)
+    {
+        tool_menu.Add_item(std::make_unique<Tool_Icon>(this, i));
+    }
+}
 
 Paint* Editor::Selected_paint()
 {
@@ -173,6 +179,8 @@ std::unique_ptr<State> Editor::Update()
     camera_controller.Update();
     Edit();
     paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
+    tool_menu.Update({ 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
+
     return nullptr;
 }
 
@@ -208,6 +216,8 @@ void Editor::Draw_UI() const
     }
 
     paint_menu.Draw({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
+    tool_menu.Draw({ 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
+
 }
 
 void Editor::Drag_handles()
@@ -308,3 +318,10 @@ void Editor::Render() const
     Draw_UI();
 
 };
+
+
+void Add_Door::Draw_swatch(Rectangle rect) const noexcept
+{
+    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
+    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+}

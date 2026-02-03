@@ -11,6 +11,7 @@
 #include "CameraController.h"
 
 
+
 struct Camera3D;
 
 struct Feature_settings
@@ -27,11 +28,11 @@ public:
 
     virtual const char* Name() const = 0;
 
-    virtual void OnActivate() {}
-    virtual void OnDeactivate() {}
+    //virtual void OnActivate() {}
+    //virtual void OnDeactivate() {}
 
     virtual void Update(const Camera& camera, Project& project) = 0;
-    virtual void DrawOverlay() const {}
+    //virtual void DrawOverlay() const {}
 
     virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
 
@@ -40,7 +41,7 @@ public:
 class Add_Door : public Tool
 {
 public:
-    const char* Name() const noexcept override { return "Door"; }
+    const char* Name() const noexcept override { return "Add Door"; }
 
     void Update(const Camera& camera, Project& project) override
     {
@@ -57,10 +58,7 @@ public:
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;
-
 };
-
-
 
 class Editor : public State
 {
@@ -70,7 +68,6 @@ class Editor : public State
     Menu paint_menu;
     Feature_settings feature_settings;
     std::vector<std::unique_ptr<Tool>> tools;
-    Tool* active_tool = nullptr;
     Menu tool_menu;
     Font font; 
 
@@ -89,7 +86,6 @@ public:
     }
 private:
     Handle Make_handle(const Wall* wall);
-    //const Wall* Hovered_wall() const;
     Wall* Hovered_handle();
     Wall* Hovered_wall();
     const Paint* Selected_paint() const;
@@ -97,7 +93,6 @@ private:
 
     void Add_tool(std::unique_ptr<Tool> tool)
     {
-        if (!active_tool) active_tool = tool.get();
         tools.push_back(std::move(tool));
     }
     void Make_tools();
@@ -120,12 +115,15 @@ struct Tool_Icon : Menu_Icon
     Tool_Icon(Editor* e, size_t i) noexcept
         : editor(e), tool_index(i) {}
 
-    void Draw(Rectangle rect, bool selected) const override
+    void Draw(Rectangle rect, bool selected, bool hovered) const override
     {
         editor->Get_tool(tool_index).Draw_swatch(rect);
 
-        if (selected)
+        if (hovered)
             DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
+
+        if (selected)
+            DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, GRAY);
     }
 
     //void On_click() override

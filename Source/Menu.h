@@ -11,7 +11,7 @@
 struct Menu_Icon
 {
     virtual ~Menu_Icon() = default;
-    virtual void Draw(Rectangle rect, bool selected) const = 0;
+    virtual void Draw(Rectangle rect, bool selected, bool hovered) const = 0;
 };
 
 class Menu
@@ -25,6 +25,11 @@ public:
     void Update(Vector2 position) noexcept;
     void Draw(Vector2 position) const;
     int  Selected_index() const noexcept { return selected; }
+    void Deselect()
+    {
+        selected = -1;
+    }
+    bool Clicked(Vector2 mouse_position) const noexcept;
 
 private:
     std::vector<std::unique_ptr<Menu_Icon>> items;

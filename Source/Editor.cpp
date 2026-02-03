@@ -47,8 +47,6 @@ void Editor::Build_paint_menu()
 void Editor::Make_tools()
 {
     Add_tool(std::make_unique<Add_Door>());
-
-    active_tool = tools.front().get();
 }
 
 void Editor::Build_tool_menu()
@@ -140,6 +138,11 @@ Wall* Editor::Hovered_wall()
 void Editor::Edit()
 {
 
+    if (tool_menu.Selected_index() != -1)
+    {
+        tools.at(tool_menu.Selected_index())->Update(camera_controller.camera, project);
+    }
+
     Paint_surface();
 
     Drag_handles();
@@ -163,7 +166,6 @@ Handle Editor::Make_handle(const Wall* w)
     return _handle;
 }
 
-
 std::unique_ptr<State> Editor::Update()
 {
     if (IsKeyReleased(KEY_TAB))
@@ -176,10 +178,31 @@ std::unique_ptr<State> Editor::Update()
         return std::make_unique<PaintEditor>(project, camera_controller);
     }
 
+
     camera_controller.Update();
     Edit();
-    paint_menu.Update({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
-    tool_menu.Update({ 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
+
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+    {
+        const Vector2 mouse_position = GetMousePosition();
+
+        if (paint_menu.Clicked(mouse_position))
+        {
+            tool_menu.Deselect();
+        }
+
+        if (tool_menu.Clicked(mouse_position))
+        {
+            paint_menu.Deselect();
+        }
+    }
+
+    const Vector2 PAINT_MENU_POSITION = { 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
+    const Vector2 TOOL_MENU_POSITION = { 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
+    paint_menu.Update(PAINT_MENU_POSITION); 
+    tool_menu.Update(TOOL_MENU_POSITION);   
+
+
 
     return nullptr;
 }
@@ -210,14 +233,13 @@ void Editor::Draw_UI() const
         if (handle.Hovered(camera_controller.camera) || handle.selected)
         {
             DrawCircleV(GetWorldToScreen(handle.Position(), camera_controller.camera), radius, PINK);
-
         }
-
     }
 
-    paint_menu.Draw({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
-    tool_menu.Draw({ 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
-
+    const Vector2 PAINT_MENU_POSITION = { 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
+    const Vector2 TOOL_MENU_POSITION = { 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
+    paint_menu.Draw(PAINT_MENU_POSITION); 
+    tool_menu.Draw(TOOL_MENU_POSITION);
 }
 
 void Editor::Drag_handles()
@@ -309,7 +331,6 @@ void Editor::Render() const
             const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
             hovered_wall->Draw_filled(transparent_color);
         }
-    
     }
 
     //color_picker.Draw();

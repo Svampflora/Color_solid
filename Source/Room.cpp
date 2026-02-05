@@ -706,23 +706,23 @@ void Wall::Add_paint(Paint& paint)
     paint_layers.push_back(&paint);
 }
 
-void Wall::Try_add_door() 
-{
-
-    const Entrance door(0.5f, Height());
-    float total_door_width = door.Width();
-    for (const auto& _door : doors)
-    {
-        total_door_width += _door.Width();
-    }
-    if (total_door_width >= Length()) //TODO: make function Availible_edge_space(); take mouse position into account
-    {
-        return;
-    }
-
-    //TODO: squeeze in door if possible
-    doors.push_back(door);
-}
+//void Wall::Try_add_door() 
+//{
+//
+//    const Entrance door(0.5f, Height());
+//    float total_door_width = door.Width();
+//    for (const auto& _door : doors)
+//    {
+//        total_door_width += _door.Width();
+//    }
+//    if (total_door_width >= Length()) //TODO: make function Availible_edge_space(); take mouse position into account
+//    {
+//        return;
+//    }
+//
+//    //TODO: squeeze in door if possible
+//    doors.push_back(door);
+//}
 
 void Wall::Try_add_aperture() noexcept
 {
@@ -944,7 +944,7 @@ void Room::Generate_box_room(float width, float length, float height)
     cieling_index = walls.size() - 1;
     walls.at(cieling_index).skirt_board.Set_height(0.0f); //TODO: demeter
 
-    walls.at(0).Try_add_door();
+    //walls.at(0).Try_add_door();
     walls.at(1).Try_add_aperture();
 
 

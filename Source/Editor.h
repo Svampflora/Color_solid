@@ -6,6 +6,7 @@
 #include "raylib.h"
 #pragma warning(pop)
 
+#include "Utilities.h"
 #include "State.h"
 #include "Project.h"
 #include "CameraController.h"
@@ -32,7 +33,7 @@ public:
     //virtual void OnDeactivate() {}
 
     virtual void Update(const Camera& camera, Project& project) = 0;
-    //virtual void DrawOverlay() const {}
+    virtual void DrawOverlay() const {}
 
     virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
 
@@ -40,6 +41,7 @@ public:
 
 class Add_Door : public Tool
 {
+
 public:
     const char* Name() const noexcept override { return "Add Door"; }
 
@@ -49,12 +51,43 @@ public:
         Wall* wall = project.room.Hovered_wall(camera, ray);
         if (!wall) return;
 
+        const RayCollision collision = RayIntersectsWall(ray, *wall); 
+        float local_x = wall->Normalized_coordinate(collision.point).x;
+        Entrance preset(local_x, wall->Height()); // TODO: get preset from preset object / feature settings
+        const float normalized_width = preset.Width() / wall->Length();
+        if (local_x < half_of(normalized_width))
+        {
+            local_x = half_of(normalized_width);
+        }
+        else if (local_x > (1 - half_of(normalized_width)))
+        {
+            local_x = 1 - half_of(normalized_width);
+        }
+
+        Entrance entrance(local_x, wall->Height());
+
+        entrance.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
+
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            const RayCollision collision = RayIntersectsWall(ray, *wall); 
-            float localX = wall->Normalized_coordinate(collision.point).x;
-            wall->doors.emplace_back(localX, wall->Height());
+
+            float total_door_width = entrance.Width();
+            for (const auto& _door : wall->doors)
+            {
+                total_door_width += _door.Width();
+            }
+            if (total_door_width >= wall->Length()) //TODO: make function Availible_edge_space(); take mouse position into account
+            {
+                return;
+            }
+
+            wall->doors.emplace_back(local_x, wall->Height());
         }
+    }
+
+    void DrawOverlay()
+    {
+
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;

@@ -95,8 +95,6 @@ Wall* Editor::Hovered_handle()
     return hovered_wall;
 }
 
-
-
 const Wall* Get_Hovered_wall(const Camera& camera, const std::vector<Wall>& walls)
 {
     const Wall* hovered_wall = nullptr;
@@ -202,8 +200,6 @@ std::unique_ptr<State> Editor::Update()
     paint_menu.Update(PAINT_MENU_POSITION); 
     tool_menu.Update(TOOL_MENU_POSITION);   
 
-
-
     return nullptr;
 }
 
@@ -227,6 +223,9 @@ void Editor::Draw_UI() const
             DrawCircleV(screen_position, 4.0f, GRAY);
         }
     }
+
+
+
 
     if (handle.Active())
     {
@@ -331,6 +330,11 @@ void Editor::Render() const
             const Color transparent_color = ColorAlpha(selected_paint->color, half_of(1.0f));
             hovered_wall->Draw_filled(transparent_color);
         }
+    }
+
+    if (tool_menu.Selected_index() != -1)
+    {
+        tools.at(tool_menu.Selected_index())->DrawOverlay(camera_controller.camera, project);
     }
 
     //color_picker.Draw();

@@ -7,7 +7,7 @@ struct Project
 	Room room{};
 	std::vector<Paint> paints;
 
-	Project()
+	Project() noexcept
 	{
 		paints.push_back(Paint({ 250, 150, 150, 255 }));
 		paints.push_back(Paint({ 237, 237, 213, 255 }));

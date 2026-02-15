@@ -25,7 +25,7 @@ public:
     void Update(Vector2 position) noexcept;
     void Draw(Vector2 position) const;
     int  Selected_index() const noexcept { return selected; }
-    void Deselect()
+    void Deselect() noexcept
     {
         selected = -1;
     }

@@ -11,7 +11,7 @@
 #include "Project.h"
 #include "CameraController.h"
 
-
+const Wall* Get_Hovered_wall(const Camera& camera, const std::vector<Wall>& walls);
 
 struct Camera3D;
 
@@ -33,14 +33,32 @@ public:
     //virtual void OnDeactivate() {}
 
     virtual void Update(const Camera& camera, Project& project) = 0;
-    virtual void DrawOverlay() const {}
+    virtual void DrawOverlay(const Camera& camera, const Project& project) const = 0;
 
     virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
-
 };
 
 class Add_Door : public Tool
 {
+
+    Entrance local_entrance(const Ray ray, const Wall wall) const 
+    {
+
+        const RayCollision collision = RayIntersectsWall(ray, wall);
+        float local_x = wall.Normalized_coordinate(collision.point).x;
+        Entrance preset(local_x, wall.Height()); // TODO: get preset from preset object / feature settings
+        const float normalized_width = preset.Width() / wall.Length();
+        if (local_x < half_of(normalized_width))
+        {
+            local_x = half_of(normalized_width);
+        }
+        else if (local_x > (1 - half_of(normalized_width)))
+        {
+            local_x = 1 - half_of(normalized_width);
+        }
+
+        return Entrance(local_x, wall.Height());
+    }
 
 public:
     const char* Name() const noexcept override { return "Add Door"; }
@@ -53,20 +71,8 @@ public:
 
         const RayCollision collision = RayIntersectsWall(ray, *wall); 
         float local_x = wall->Normalized_coordinate(collision.point).x;
-        Entrance preset(local_x, wall->Height()); // TODO: get preset from preset object / feature settings
-        const float normalized_width = preset.Width() / wall->Length();
-        if (local_x < half_of(normalized_width))
-        {
-            local_x = half_of(normalized_width);
-        }
-        else if (local_x > (1 - half_of(normalized_width)))
-        {
-            local_x = 1 - half_of(normalized_width);
-        }
 
-        Entrance entrance(local_x, wall->Height());
-
-        entrance.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
+        Entrance entrance = local_entrance(ray, *wall);
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
@@ -85,9 +91,15 @@ public:
         }
     }
 
-    void DrawOverlay()
+    void DrawOverlay(const Camera& camera, const Project& project) const override
     {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
+        if (!wall) return;
 
+        Entrance entrance = local_entrance(ray, *wall);
+
+        entrance.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;

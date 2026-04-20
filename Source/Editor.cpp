@@ -22,7 +22,9 @@ Editor::Editor(Project& project_ref, CameraController& camRef) :
 {
     camera_controller.Set_birds_eye();
     camera_controller.Set_projection(CAMERA_PERSPECTIVE);
-    //camera_controller.Set_target(project_ref.room.Center);
+
+    room_position = project_ref.room.Center();
+    camera_controller.Set_target(room_position);
 
     Make_tools();
 

@@ -6,8 +6,8 @@
 
 class FloorPlanEditor : public State
 {
-	Project& project;
-	CameraController& camera_controller;
+	Project&			project;
+	CameraController&	camera_controller;
 public:
 
 	FloorPlanEditor(Project& project_ref, CameraController& camera_ref);

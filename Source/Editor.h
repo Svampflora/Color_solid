@@ -38,6 +38,36 @@ public:
     virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
 };
 
+//class Move : public Tool
+//{
+//
+//
+//public:
+//    const char* Name() const noexcept override { return "Move"; }
+//
+//    void Update(const Camera& camera, Project& project) override
+//    {
+//        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+//        Wall* wall = project.room.Hovered_wall(camera, ray);
+//        if (!wall) return;
+//
+//        const RayCollision collision = RayIntersectsWall(ray, *wall);
+//
+//        
+//
+//        float local_x = wall->Normalized_coordinate(collision.point).x;
+//        Aperture preset(local_x, wall->Height()); // TODO: get preset from preset object / feature settings
+//        const float normalized_width = preset.Width() / wall->Length();
+//
+//        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+//        {
+//
+//
+//        }
+//    }
+//
+//};
+
 class Add_Door : public Tool
 {
 
@@ -107,17 +137,18 @@ public:
 
 class Editor : public State
 {
-    Project& project;
-	CameraController& camera_controller;
-    Handle handle;
-    Menu paint_menu;
-    Feature_settings feature_settings;
-    std::vector<std::unique_ptr<Tool>> tools;
-    Menu tool_menu;
-    Font font; 
+    Project&                            project;
+    CameraController&                   camera_controller;
+    Handle                              handle;
+    Menu                                paint_menu;
+    Feature_settings                    feature_settings;
+    std::vector<std::unique_ptr<Tool>>  tools;
+    Menu                                tool_menu;
+    Font                                font;
 
-    float min_size = 1.0f; //TODO: move. settings?
-    float max_size = 10.0f;
+    Vector3                             room_position = { 0.0f, 0.0f, 0.0f };
+    float                               min_size = 1.0f; //TODO: move. settings?
+    float                               max_size = 10.0f;
 
 public:
 

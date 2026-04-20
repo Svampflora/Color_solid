@@ -396,7 +396,7 @@ std::vector<std::array<Vector3, 4>> Wall::Paint_quads() const
     const float wall_width = Vector3Distance(wall_quad[0], wall_quad[1]);
 
     std::vector<ApertureSpan> spans;
-    for (const Aperture* ap : apertures)
+    for (const Aperture* ap : apertures) //TODO: apertures should be ordered after editing or adding has occured, not each frame for rendering
     {
         const float half_u = (ap->width * 0.5f) / wall_width;
         spans.push_back({
@@ -1029,4 +1029,17 @@ void Room::Draw_walls() const
 
         }
     }
+}
+
+Vector3 Room::Center() const
+{
+    if (walls.empty()) return Vector3Zero();
+
+    Vector3 sum = Vector3Zero();
+    for (size_t i = 0; i < walls.size(); ++i)
+    {
+        sum = Vector3Add(sum, walls.at(i).Center());
+    }
+
+    return Vector3Scale(sum, 1.0f / static_cast<float>(walls.size()));
 }

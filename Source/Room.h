@@ -184,6 +184,8 @@ struct Room : Paintable
     float Liters_used(const Paint* target) const override;
     void Mirror_resize(const Vector3& direction, const Vector3& move_delta);
     void Draw_walls() const;
+    Vector3 Center() const;
+
     Wall* Hovered_wall(const Camera& camera, const Ray& ray)
     {
         Wall* hovered_wall = nullptr;

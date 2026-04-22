@@ -17,8 +17,8 @@ struct RayHit {
 RayHit RayIntersectPlane(Ray ray, Vector3 planeNormal, float planeDistance);
 RayCollision RayIntersectsQuad(const Ray& ray, const std::array<Vector3, 4>& quad);
 bool IntersectLineWithHorizontalPlane(Vector3 a, Vector3 b, float planeY, Vector3& outPoint);
-Vector3 RotationMatrixToEuler(Matrix m);
-void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll);
+Vector3 RotationMatrixToEuler(Matrix m) noexcept;
+void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll) noexcept;
 std::array<Vector3, 4> Quad_strip(const std::array<Vector3, 4>&, float normalized_left, float normalized_right );
 
 enum class TextAnchor3D {
@@ -33,11 +33,11 @@ Vector3 GetAnchoredTextOffset3D(Font font, const char* text, float fontSize, Tex
 void DrawAnchoredText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, bool backface, Color tint, TextAnchor3D anchor, const Matrix& rotation);
 
 // === Geometry helpers ===
-void DrawQuad(std::array<Vector3, 4> corners, Color color);
+void DrawQuad(std::array<Vector3, 4> corners, Color color) noexcept;
 void BuildTangentBasis(Vector3 normal, Vector3& right, Vector3& up);
 void DrawRectangleLinesEx3D(Vector3 center, Vector2 size, Vector3 normal, float rotation, Color color);
-void DrawPolygonLinesEx3D(const std::vector<Vector3>& points, Color color);
-void DrawQuadLinesEx3D(const std::array<Vector3, 4>& points, Color color);
+void DrawPolygonLinesEx3D(const std::vector<Vector3>& points, Color color) noexcept;
+void DrawQuadLinesEx3D(const std::array<Vector3, 4>& points, Color color) noexcept;
 void DrawTriangleFan3D(const std::vector<Vector3>& points, Color color);
 void DrawCubeWires3D(Vector3 position, float width, float height, float depth, Color tint, const Matrix& rotation);
 

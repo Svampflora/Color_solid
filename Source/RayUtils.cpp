@@ -44,12 +44,12 @@ bool IntersectLineWithHorizontalPlane(Vector3 a, Vector3 b, float planeY, Vector
     if ((a.y < planeY && b.y < planeY) || (a.y > planeY && b.y > planeY)) return false;
 
     // Linear interpolation along edge
-    float t = (planeY - a.y) / (b.y - a.y);
+    const float t = (planeY - a.y) / (b.y - a.y);
     outPoint = Vector3Lerp(a, b, t);
     return true;
 }
 
-Vector3 RotationMatrixToEuler(Matrix m)
+Vector3 RotationMatrixToEuler(Matrix m) noexcept
 {
     Vector3 euler{};
 
@@ -74,7 +74,7 @@ Vector3 RotationMatrixToEuler(Matrix m)
     return euler;
 }
 
-void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll)
+void MatrixToEulerZYX(const Matrix& mat, float& yaw, float& pitch, float& roll) noexcept
 {
     if (fabsf(mat.m6) < 0.999f)  // No gimbal lock
     {
@@ -133,26 +133,26 @@ void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontS
     // Character index position in sprite font
     // NOTE: In case a codepoint is not available in the font, index returned points to '?'
     const int index = GetGlyphIndex(font, codepoint);
-    const float scale = fontSize / (float)font.baseSize;
+    const float scale = fontSize / static_cast<float>(font.baseSize);
 
     // Character destination rectangle on screen
     // NOTE: We consider charsPadding on drawing
-    position.x += (float)(font.glyphs[index].offsetX - font.glyphPadding) * scale;
-    position.z += (float)(font.glyphs[index].offsetY - font.glyphPadding) * scale;
+    position.x += static_cast<float>(font.glyphs[index].offsetX - font.glyphPadding) * scale;
+    position.z += static_cast<float>(font.glyphs[index].offsetY - font.glyphPadding) * scale;
 
     // Character source rectangle from font texture atlas
     // NOTE: We consider chars padding when drawing, it could be required for outline/glow shader effects
-    const Rectangle srcRec = { font.recs[index].x - (float)font.glyphPadding, font.recs[index].y - (float)font.glyphPadding,
+    const Rectangle srcRec = { font.recs[index].x - static_cast<float>(font.glyphPadding), font.recs[index].y - static_cast<float>(font.glyphPadding),
                          font.recs[index].width + 2.0f * font.glyphPadding, font.recs[index].height + 2.0f * font.glyphPadding };
 
-    const float width = (float)(font.recs[index].width + 2.0f * font.glyphPadding) * scale;
-    const float height = (float)(font.recs[index].height + 2.0f * font.glyphPadding) * scale;
+    const float width =  static_cast<float>(font.recs[index].width + 2.0f * font.glyphPadding) * scale;
+    const float height = static_cast<float>(font.recs[index].height + 2.0f * font.glyphPadding) * scale;
 
     if (font.texture.id > 0)
     {
-        const float x = 0.0f;
-        const float y = 0.0f;
-        const float z = 0.0f;
+        constexpr float x = 0.0f;
+        constexpr float y = 0.0f;
+        constexpr float z = 0.0f;
 
         // normalized texture coordinates of the glyph inside the font texture (0.0f -> 1.0f)
         const float tx = srcRec.x / font.texture.width;
@@ -196,19 +196,23 @@ void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontS
 
 void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, float lineSpacing, bool backface, Color tint)
 {
-    int length = TextLength(text);          // Total length in bytes of the text, scanned by codepoints in loop
+    if(!text)
+    {
+        return;
+    }
+    const int length = TextLength(text);          // Total length in bytes of the text, scanned by codepoints in loop
 
     float textOffsetY = 0.0f;               // Offset between lines (on line break '\n')
     float textOffsetX = 0.0f;               // Offset X to next character to draw
 
-    float scale = fontSize / (float)font.baseSize;
+    const float scale = fontSize / static_cast<float>(font.baseSize);
 
     for (int i = 0; i < length;)
     {
         // Get next codepoint from byte string and glyph index in font
         int codepointByteCount = 0;
-        int codepoint = GetCodepoint(&text[i], &codepointByteCount);
-        int index = GetGlyphIndex(font, codepoint);
+        const int codepoint = GetCodepoint(&text[i], &codepointByteCount);
+        const int index = GetGlyphIndex(font, codepoint);
 
         // NOTE: Normally we exit the decoding sequence as soon as a bad byte is found (and return 0x3f)
         // but we need to draw all of the bad bytes using the '?' symbol moving one byte
@@ -228,8 +232,8 @@ void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, f
                 DrawTextCodepoint3D(font, codepoint, Vector3{ position.x + textOffsetX, position.y, position.z + textOffsetY }, fontSize, backface, tint);
             }
 
-            if (font.glyphs[index].advanceX == 0) textOffsetX += (float)font.recs[index].width * scale + fontSpacing;
-            else textOffsetX += (float)font.glyphs[index].advanceX * scale + fontSpacing;
+            if (font.glyphs[index].advanceX == 0) textOffsetX += static_cast<float>(font.recs[index].width) * scale + fontSpacing;
+            else textOffsetX += static_cast<float>(font.glyphs[index].advanceX) * scale + fontSpacing;
         }
 
         i += codepointByteCount;   // Move text bytes counter to next codepoint
@@ -239,19 +243,19 @@ void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, f
 Vector3 GetAnchoredTextOffset3D(Font font, const char* text, float fontSize, TextAnchor3D anchor)
 {
     const int length = TextLength(text);
-    float scale = fontSize / (float)font.baseSize;
+    const float scale = fontSize / static_cast<float>(font.baseSize);
     float textWidth = 0.0f;
 
     for (int i = 0; i < length;)
     {
         int codepointByteCount = 0;
-        int codepoint = GetCodepoint(&text[i], &codepointByteCount);
-        int index = GetGlyphIndex(font, codepoint);
+        const int codepoint = GetCodepoint(&text[i], &codepointByteCount);
+        const int index = GetGlyphIndex(font, codepoint);
         textWidth += (font.glyphs[index].advanceX > 0 ? font.glyphs[index].advanceX : font.recs[index].width) * scale;
         i += codepointByteCount;
     }
 
-    float textHeight = fontSize;
+    const float textHeight = fontSize;
 
     Vector3 offset = { 0 };
 
@@ -365,7 +369,7 @@ void DrawCubeWires3D(Vector3 position, float width, float height, float depth, C
     rlPopMatrix();
 }
 
-void DrawQuad(std::array<Vector3, 4> corners, Color color)
+void DrawQuad(std::array<Vector3, 4> corners, Color color) noexcept
 {
     DrawTriangle3D(corners[0], corners[1], corners[2], color);
     DrawTriangle3D(corners[2], corners[3], corners[0], color);
@@ -386,8 +390,8 @@ void DrawRectangleLinesEx3D(Vector3 center, Vector2 size, Vector3 normal, float 
     Vector3 right, up;
     BuildTangentBasis(normal, right, up);
 
-    float cosAngle = cosf(rotation);
-    float sinAngle = sinf(rotation);
+    const float cosAngle = cosf(rotation);
+    const float sinAngle = sinf(rotation);
 
     Vector3 rotatedRight = Vector3Scale(right, cosAngle);
     rotatedRight = Vector3Add(rotatedRight, Vector3Scale(up, sinAngle));
@@ -395,13 +399,13 @@ void DrawRectangleLinesEx3D(Vector3 center, Vector2 size, Vector3 normal, float 
     Vector3 rotatedUp = Vector3Scale(up, cosAngle);
     rotatedUp = Vector3Subtract(rotatedUp, Vector3Scale(right, sinAngle));
 
-    float halfW = size.x / 2.0f;
-    float halfH = size.y / 2.0f;
-
-    Vector3 topLeft = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, halfH), Vector3Scale(rotatedRight, -halfW)));
-    Vector3 topRight = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, halfH), Vector3Scale(rotatedRight, +halfW)));
-    Vector3 bottomRight = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, -halfH), Vector3Scale(rotatedRight, +halfW)));
-    Vector3 bottomLeft = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, -halfH), Vector3Scale(rotatedRight, -halfW)));
+    const float halfW = size.x / 2.0f;
+    const float halfH = size.y / 2.0f;
+     
+    const Vector3 topLeft = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, halfH), Vector3Scale(rotatedRight, -halfW)));
+    const Vector3 topRight = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, halfH), Vector3Scale(rotatedRight, +halfW)));
+    const Vector3 bottomRight = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, -halfH), Vector3Scale(rotatedRight, +halfW)));
+    const Vector3 bottomLeft = Vector3Add(center, Vector3Add(Vector3Scale(rotatedUp, -halfH), Vector3Scale(rotatedRight, -halfW)));
 
     DrawLine3D(topLeft, topRight, color);
     DrawLine3D(topRight, bottomRight, color);
@@ -409,7 +413,7 @@ void DrawRectangleLinesEx3D(Vector3 center, Vector2 size, Vector3 normal, float 
     DrawLine3D(bottomLeft, topLeft, color);
 }
 
-void DrawPolygonLinesEx3D(const std::vector<Vector3>& points, Color color)
+void DrawPolygonLinesEx3D(const std::vector<Vector3>& points, Color color) noexcept
 {
     if (points.size() < 2) return;
 
@@ -422,7 +426,7 @@ void DrawPolygonLinesEx3D(const std::vector<Vector3>& points, Color color)
     }
 }
 
-void DrawQuadLinesEx3D(const std::array<Vector3, 4>& points, Color color)
+void DrawQuadLinesEx3D(const std::array<Vector3, 4>& points, Color color) noexcept
 {
     if (points.size() < 2) return;
 
@@ -437,7 +441,7 @@ void DrawQuadLinesEx3D(const std::array<Vector3, 4>& points, Color color)
 
 void DrawTriangleFan3D(const std::vector<Vector3>& points, Color color)
 {
-    size_t vertex_minimum = 3;
+    constexpr size_t vertex_minimum = 3;
     if (points.size() < vertex_minimum) return;
 
     rlCheckRenderBatchLimit(3 * (narrow_cast<int>(points.size()) - 2));
@@ -518,9 +522,9 @@ float PolygonArea(const std::vector<Vector3>& vertices)
 
 float TriangleArea(const Vector3& a, const Vector3& b, const Vector3& c)
 {
-    Vector3 ab = Vector3Subtract(b, a);
-    Vector3 ac = Vector3Subtract(c, a);
-    Vector3 cross = Vector3CrossProduct(ab, ac);
+    const Vector3 ab = Vector3Subtract(b, a);
+    const Vector3 ac = Vector3Subtract(c, a);
+    const Vector3 cross = Vector3CrossProduct(ab, ac);
     return 0.5f * Vector3Length(cross);
 }
 
@@ -532,8 +536,8 @@ float QuadArea(const std::array<Vector3, 4>& v)
     // v3 -- v2
 
     // Split into two triangles: (v0, v1, v2) and (v0, v2, v3)
-    float A1 = TriangleArea(v[0], v[1], v[2]);
-    float A2 = TriangleArea(v[0], v[2], v[3]);
+    const float A1 = TriangleArea(v[0], v[1], v[2]);
+    const float A2 = TriangleArea(v[0], v[2], v[3]);
 
     return A1 + A2;
 }

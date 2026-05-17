@@ -1,6 +1,7 @@
 #include "Paint.h"
 
 #include "Utilities.h"
+#include "ColorUtils.h"
 
 
 
@@ -22,10 +23,19 @@ void Paint::Draw_swatch(Rectangle rect) const noexcept
 
 }
 
-void Paint::Draw_swatch(Rectangle rect, const int alpha) const noexcept
+void Paint::Draw_swatch_with_coats(Rectangle rect) const noexcept
 {
-    Color fade = color;
-    fade.a = narrow_cast<char>(alpha);
-    DrawRectangleRounded(rect, 0.5f, 10, fade);
+    for (int coat = narrow_cast<int>(coats) - 1; coat >= 0; --coat)
+    {
+        Rectangle layer = rect;
+
+        layer.x += coat * layer.width * 0.25f;
+
+        const float alpha =
+            1.0f - ((coat + 1.0f) / MAX_COATS);
+
+        const Color fade = HSV_lerp( BLACK, color, alpha);
+        DrawRectangleRounded(layer, 0.5f, 10, fade);
+    }
     
 }

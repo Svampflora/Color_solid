@@ -4,6 +4,7 @@
 #include "Editor.h"
 #include <raymath.h>
 
+
 PaintEditor::PaintEditor(Project& project_ref, CameraController& camera_ref) :
 	color_picker(),
 	paint_menu(),
@@ -71,16 +72,7 @@ std::unique_ptr<State> PaintEditor::Update()
 		Text_menu text_menu{ Paint_stats(*selected_paint), selected_stats_rec };
 		const int hovered_list_element = text_menu.hovered_index();
 
-		for (int j = 0; j < selected_paint->coats; j++)
-		{
-			Rectangle pushed_rect = selected_paint_rec;
-			pushed_rect.x = selected_paint_rec.x+ j * (0.25f * selected_paint_rec.x);
-			int alpha = 255 - (255 / 10) * j;
-
-			selected_paint->Draw_swatch(pushed_rect, alpha); //move to render
-
-		}
-		//selected_paint->Draw_swatch(selected_paint_rec); //move to render
+		selected_paint->Draw_swatch_with_coats(selected_paint_rec); // todo: move to render
 		text_menu.Draw(LIGHTGRAY);
 
 		if (hovered_list_element >= 0)
@@ -102,7 +94,7 @@ std::unique_ptr<State> PaintEditor::Update()
 					{
 						--selected_paint->coats;
 					}
-					if (wheel > 0 && selected_paint->coats < 10)
+					if (wheel > 0 && selected_paint->coats < MAX_COATS)
 					{
 						++selected_paint->coats;
 					}

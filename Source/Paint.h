@@ -8,6 +8,9 @@
 #include <vector>
 #include "Menu.h" 
 
+inline size_t MAX_COATS = 10;
+
+
 struct Paint
 {
     Color color;
@@ -17,7 +20,7 @@ struct Paint
     Paint(Color _color) noexcept;
 
     void Draw_swatch(Rectangle rect) const noexcept;
-    void Draw_swatch(Rectangle rect, const int alpha) const noexcept;
+    void Draw_swatch_with_coats(Rectangle rect) const noexcept;
     void Draw_info(Rectangle rect, float liters_of) const noexcept;
 
 };

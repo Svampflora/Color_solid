@@ -40,6 +40,9 @@ float GetRandomValueF(int min, int max) noexcept;
 void DrawCircleF(float centerX, float centerY, float radius, Color color ) noexcept;
 void DrawTextF(const char* text, float posX, float posY, int fontSize, Color color) noexcept;
 Vector2 GetScreenCenter() noexcept;
+constexpr int Clamp(int value, int min, int max) noexcept;
+void DecrementClampZero(size_t& value) noexcept;
+
 
 template <typename T, typename U>
 inline T narrow_cast(U&& u) noexcept

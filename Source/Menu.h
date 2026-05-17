@@ -39,12 +39,27 @@ private:
     int selected = -1;
 };
 
-struct Rect_list
+struct Text_menu
 {
     std::vector<std::string> list;
     Rectangle rectangle;
 
 public:
+
+    int hovered_index()
+    {
+        int i = 0;
+        for (auto s : list)
+        {
+            if (CheckCollisionPointRec(GetMousePosition(), Entry_rectangle(i)))
+            {
+                return i;
+            }
+            i++;
+        }
+        return -1;
+    }
+
     void Draw(const Color& color)
     {
 

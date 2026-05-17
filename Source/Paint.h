@@ -17,6 +17,7 @@ struct Paint
     Paint(Color _color) noexcept;
 
     void Draw_swatch(Rectangle rect) const noexcept;
+    void Draw_swatch(Rectangle rect, const int alpha) const noexcept;
     void Draw_info(Rectangle rect, float liters_of) const noexcept;
 
 };

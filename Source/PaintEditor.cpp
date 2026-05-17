@@ -29,6 +29,7 @@ void PaintEditor::Build_paint_menu()
 	}
 }
 
+
 std::vector<std::string> PaintEditor::Paint_stats(const Paint& paint)
 {
 	std::vector<std::string> stats;
@@ -52,8 +53,6 @@ std::unique_ptr<State> PaintEditor::Update()
 	}
 	color_picker.Update(camera_controller.camera);
 
-
-
 	Paint* selected_paint;
 	const int i = paint_menu.Selected_index();
 	if (i < 0)
@@ -69,28 +68,50 @@ std::unique_ptr<State> PaintEditor::Update()
 	const Rectangle selected_stats_rec{ selected_paint_rec.x, selected_paint_rec.y + selected_paint_rec.height, selected_paint_rec.width, selected_paint_rec.height };
 	if (selected_paint)
 	{
-		Rect_list rec_list{ Paint_stats(*selected_paint), selected_stats_rec };
+		Text_menu text_menu{ Paint_stats(*selected_paint), selected_stats_rec };
+		const int hovered_list_element = text_menu.hovered_index();
 
-		selected_paint->Draw_swatch(selected_paint_rec); //move to render
-		rec_list.Draw(LIGHTGRAY);
-
-		if (CheckCollisionPointRec(GetMousePosition(), rec_list.Entry_rectangle(0)))
+		for (int j = 0; j < selected_paint->coats; j++)
 		{
+			Rectangle pushed_rect = selected_paint_rec;
+			pushed_rect.x = selected_paint_rec.x+ j * (0.25f * selected_paint_rec.x);
+			int alpha = 255 - (255 / 10) * j;
 
+			selected_paint->Draw_swatch(pushed_rect, alpha); //move to render
+
+		}
+		//selected_paint->Draw_swatch(selected_paint_rec); //move to render
+		text_menu.Draw(LIGHTGRAY);
+
+		if (hovered_list_element >= 0)
+		{
+			
 			const float wheel = GetMouseWheelMove();
-			rec_list.Draw_line(WHITE, 0);
+			text_menu.Draw_line(WHITE, hovered_list_element);
 			if (wheel != 0)
 			{
+				if (hovered_list_element == 0)
+				{
+					selected_paint->m2_per_liter += wheel * 0.5f;
+					selected_paint->m2_per_liter = Clamp(selected_paint->m2_per_liter, 0.0f, 50.0f);
 
-				selected_paint->m2_per_liter += wheel * 0.5f;
-				selected_paint->m2_per_liter = Clamp(selected_paint->m2_per_liter, 0.0f, 50.0f);
-
+				}
+				else if (hovered_list_element == 1)
+				{
+					if (wheel < 0 && selected_paint->coats > 0)
+					{
+						--selected_paint->coats;
+					}
+					if (wheel > 0 && selected_paint->coats < 10)
+					{
+						++selected_paint->coats;
+					}
+				}
 			}
 		}
 		else
 		{
 			camera_controller.Update_zoom();
-
 		}
 	}
 	else

@@ -37,4 +37,19 @@ Vector2 GetScreenCenter() noexcept
 	return { GetScreenWidthF(), GetScreenHeightF() };
 }
 
+constexpr int Clamp(int value, int min, int max) noexcept
+{
+	return (value < min)
+		? min
+		: (value > max)
+		? max
+		: value;
+}
 
+void DecrementClampZero(size_t& value) noexcept
+{
+	if (value > 0)
+	{
+		--value;
+	}
+}

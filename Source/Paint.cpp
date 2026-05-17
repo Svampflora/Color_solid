@@ -21,3 +21,11 @@ void Paint::Draw_swatch(Rectangle rect) const noexcept
     DrawRectangleRounded(rect, 0.5f, 10, color);
 
 }
+
+void Paint::Draw_swatch(Rectangle rect, const int alpha) const noexcept
+{
+    Color fade = color;
+    fade.a = narrow_cast<char>(alpha);
+    DrawRectangleRounded(rect, 0.5f, 10, fade);
+    
+}

@@ -6,6 +6,8 @@
 #include "raylib.h"
 #pragma warning(pop)
 
+#include <string>
+
 #include <vector>
 #include <array>
 
@@ -31,6 +33,10 @@ void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontS
 void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, float lineSpacing, bool backface, Color tint);
 Vector3 GetAnchoredTextOffset3D(Font font, const char* text, float fontSize, TextAnchor3D anchor);
 void DrawAnchoredText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, bool backface, Color tint, TextAnchor3D anchor, const Matrix& rotation);
+
+Rectangle TextRect(Font font, const char* text, Vector2 position, float fontSize, float spacing);
+Rectangle TextRect(Font font, const std::string& text, Vector2 position, float fontSize, float spacing);
+
 
 // === Geometry helpers ===
 void DrawQuad(std::array<Vector3, 4> corners, Color color) noexcept;

@@ -20,4 +20,5 @@ public:
 
 private:
 	void Build_paint_menu();
+	std::vector<std::string> Paint_stats(const Paint& paint);
 };

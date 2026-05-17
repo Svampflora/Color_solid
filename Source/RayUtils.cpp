@@ -580,3 +580,20 @@ void debugging_tools::DrawVertexOrder(const std::array<Vector3, 4>& w, const Vec
     }
     
 }
+
+Rectangle TextRect(Font font, const char* text, Vector2 position, float fontSize, float spacing)
+{
+    const Vector2 size = MeasureTextEx(font, text, fontSize, spacing);
+
+    return {
+        position.x,
+        position.y,
+        size.x,
+        size.y
+    };
+}
+
+Rectangle TextRect(Font font,  const std::string& text, Vector2 position, float fontSize, float spacing)
+{
+    return TextRect(font, text.c_str(), position, fontSize, spacing);
+}

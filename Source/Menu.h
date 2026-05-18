@@ -49,8 +49,10 @@ public:
     int hovered_index()
     {
         int i = 0;
+
         for (auto s : list)
         {
+            
             if (CheckCollisionPointRec(GetMousePosition(), Entry_rectangle(i)))
             {
                 return i;
@@ -62,7 +64,6 @@ public:
 
     void Draw(const Color& color)
     {
-
         int i = 0;
         for (auto s : list)
         {
@@ -73,7 +74,6 @@ public:
 
     void Draw_outline()
     {
-
         int i = 0;
         for (auto s : list)
         {
@@ -95,7 +95,6 @@ public:
     {
         const float height = line_height();
         const float line_y = rectangle.y + height * index;
-       
 
         return TextRect(GetFontDefault(), list.at(index).data(), {rectangle.x , line_y}, height, 2);
     }

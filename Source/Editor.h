@@ -91,7 +91,7 @@ class Add_Door : public Tool
     }
 
 public:
-    const char* Name() const noexcept override { return "Add Door"; }
+    const char* Name() const noexcept override { return "Lägg till Dörr"; }
 
     void Update(const Camera& camera, Project& project) override
     {
@@ -130,6 +130,68 @@ public:
         Entrance entrance = local_entrance(ray, *wall);
 
         entrance.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
+    }
+
+    void Draw_swatch(Rectangle rect) const noexcept override;
+};
+
+class Add_Aperture : public Tool
+{
+
+    Aperture local_aperture(const Ray ray, const Wall wall) const
+    {
+
+        const RayCollision collision = RayIntersectsWall(ray, wall);
+        Vector2 local_position = wall.Normalized_coordinate(collision.point);
+        Aperture preset(wall.Normalized_coordinate(collision.point)); // TODO: get preset from preset object / feature settings
+        const float normalized_width = preset.Width() / wall.Length();
+        if (local_position.x < half_of(normalized_width))
+        {
+            local_position.x = half_of(normalized_width);
+        }
+        else if (local_position.x > (1 - half_of(normalized_width)))
+        {
+            local_position.x = 1 - half_of(normalized_width);
+        }
+        if (local_position.y < half_of(normalized_width))
+        {
+            local_position.y = half_of(normalized_width);
+        }
+        else if (local_position.y > (1 - half_of(normalized_width)))
+        {
+            local_position.y = 1 - half_of(normalized_width);
+        }
+
+        return Aperture(local_position);
+    }
+
+public:
+    const char* Name() const noexcept override { return "Lägg till Fönster"; }
+
+    void Update(const Camera& camera, Project& project) override
+    {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        Wall* wall = project.room.Hovered_wall(camera, ray);
+        if (!wall) return;
+
+        const RayCollision collision = RayIntersectsWall(ray, *wall);
+        Vector2 local_position = wall->Normalized_coordinate(collision.point);
+
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
+            wall->windows.emplace_back(local_position);
+        }
+    }
+
+    void DrawOverlay(const Camera& camera, const Project& project) const override
+    {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
+        if (!wall) return;
+
+        Aperture aperture = local_aperture(ray, *wall);
+
+        aperture.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;

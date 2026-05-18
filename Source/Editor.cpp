@@ -10,8 +10,10 @@
 #include "RayUtils.h"
 #include "FloorPlanEditor.h"
 #include "PaintEditor.h"
+#include "Settings.h"
 
-
+const Vector2 PAINT_MENU_POSITION = { 0.8f * SCREEN_WIDTH, 0.2f * SCREEN_HEIGHT }; //TODO: Settings
+const Vector2 TOOL_MENU_POSITION = { 0.1f * SCREEN_WIDTH, 0.2f * SCREEN_HEIGHT };
 
 Editor::Editor(Project& project_ref, CameraController& camRef) :
     project(project_ref),
@@ -49,6 +51,8 @@ void Editor::Build_paint_menu()
 void Editor::Make_tools()
 {
     Add_tool(std::make_unique<Add_Door>());
+    Add_tool(std::make_unique<Add_Aperture>());
+
 }
 
 void Editor::Build_tool_menu()
@@ -197,8 +201,7 @@ std::unique_ptr<State> Editor::Update()
         }
     }
 
-    const Vector2 PAINT_MENU_POSITION = { 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
-    const Vector2 TOOL_MENU_POSITION = { 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
+
     paint_menu.Update(PAINT_MENU_POSITION); 
     tool_menu.Update(TOOL_MENU_POSITION);   
 
@@ -237,8 +240,6 @@ void Editor::Draw_UI() const
         }
     }
 
-    const Vector2 PAINT_MENU_POSITION = { 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
-    const Vector2 TOOL_MENU_POSITION = { 0.2f * GetScreenWidthF(), 0.2f * GetScreenHeightF() };
     paint_menu.Draw(PAINT_MENU_POSITION); 
     tool_menu.Draw(TOOL_MENU_POSITION);
 }
@@ -348,6 +349,13 @@ void Editor::Render() const
 
 
 void Add_Door::Draw_swatch(Rectangle rect) const noexcept
+{
+    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
+    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+}
+
+
+void Add_Aperture::Draw_swatch(Rectangle rect) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
     DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);

@@ -80,7 +80,7 @@ struct Aperture
     virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     virtual void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
 
-    void Draw_2D(Vector2 position) const;
+    void Draw_2D(Vector2 position) const noexcept;
 
 };
 
@@ -150,6 +150,7 @@ struct Wall : Paintable
     float Wall_paint_area() const;
     float Liters_used(const Paint* target) const override;
     bool Facing_camera(const Vector3 camera_position) const;
+    void Remove_door(int);
     void Add_paint(Paint& paint);
     //void Try_add_door();
     void Try_add_aperture() noexcept;

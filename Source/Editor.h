@@ -71,7 +71,7 @@ public:
 class Add_Door : public Tool
 {
 
-    Entrance local_entrance(const Ray ray, const Wall wall) const 
+    Entrance local_projection(const Ray ray, const Wall wall) const
     {
 
         const RayCollision collision = RayIntersectsWall(ray, wall);
@@ -102,7 +102,7 @@ public:
         const RayCollision collision = RayIntersectsWall(ray, *wall); 
         float local_x = wall->Normalized_coordinate(collision.point).x;
 
-        Entrance entrance = local_entrance(ray, *wall);
+        Entrance entrance = local_projection(ray, *wall);
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
@@ -127,7 +127,7 @@ public:
         const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
         if (!wall) return;
 
-        Entrance entrance = local_entrance(ray, *wall);
+        Entrance entrance = local_projection(ray, *wall);
 
         entrance.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
     }
@@ -138,28 +138,29 @@ public:
 class Add_Aperture : public Tool
 {
 
-    Aperture local_aperture(const Ray ray, const Wall wall) const
+    Aperture local_projection(const Ray ray, const Wall wall) const
     {
 
         const RayCollision collision = RayIntersectsWall(ray, wall);
         Vector2 local_position = wall.Normalized_coordinate(collision.point);
         Aperture preset(wall.Normalized_coordinate(collision.point)); // TODO: get preset from preset object / feature settings
-        const float normalized_width = preset.Width() / wall.Length();
-        if (local_position.x < half_of(normalized_width))
+        const Vector2 normalized_dimensions = { preset.Width() / wall.Length(), preset.Height() / wall.Height()};
+
+        if (local_position.x < half_of(normalized_dimensions.x))
         {
-            local_position.x = half_of(normalized_width);
+            local_position.x = half_of(normalized_dimensions.x);
         }
-        else if (local_position.x > (1 - half_of(normalized_width)))
+        else if (local_position.x > (1 - half_of(normalized_dimensions.x)))
         {
-            local_position.x = 1 - half_of(normalized_width);
+            local_position.x = 1 - half_of(normalized_dimensions.x);
         }
-        if (local_position.y < half_of(normalized_width))
+        if (local_position.y < half_of(normalized_dimensions.y))
         {
-            local_position.y = half_of(normalized_width);
+            local_position.y = half_of(normalized_dimensions.y);
         }
-        else if (local_position.y > (1 - half_of(normalized_width)))
+        else if (local_position.y > (1 - half_of(normalized_dimensions.y)))
         {
-            local_position.y = 1 - half_of(normalized_width);
+            local_position.y = 1 - half_of(normalized_dimensions.y);
         }
 
         return Aperture(local_position);
@@ -189,9 +190,64 @@ public:
         const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
         if (!wall) return;
 
-        Aperture aperture = local_aperture(ray, *wall);
+        Aperture aperture = local_projection(ray, *wall);
 
         aperture.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
+    }
+
+    void Draw_swatch(Rectangle rect) const noexcept override;
+};
+
+class Remove : public Tool
+{
+
+    int index_to_remove = -1;
+
+
+public:
+    const char* Name() const noexcept override { return "Ta bort"; }
+
+    void Update(const Camera& camera, Project& project) override
+    {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        Wall* wall = project.room.Hovered_wall(camera, ray);
+        if (!wall) return;
+
+        const RayCollision collision = RayIntersectsWall(ray, *wall);
+        const Vector2 local_position = wall->Normalized_coordinate(collision.point);
+
+        index_to_remove = -1;
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
+            for (int i = 0; i < wall->doors.size(); i++)
+            {
+                const Vector2 aperture_dimensions{ wall->doors.at(i).Width() , wall->doors.at(i).Height() };
+                const Rectangle local_aperture_rec{ wall->doors.at(i).center.x - half_of(aperture_dimensions.x),  wall->doors.at(i).center.y - half_of(aperture_dimensions.y), aperture_dimensions.x, aperture_dimensions.y };
+                if (CheckCollisionPointRec(local_position, local_aperture_rec))
+                {
+                    index_to_remove = i;
+                }
+            }
+        }
+
+        if (index_to_remove >= 0)
+        {
+            wall->Remove_door(index_to_remove);
+        }
+    }
+
+    void DrawOverlay(const Camera& camera, const Project& project) const override
+    {
+        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+        const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
+        if (!wall) return;
+
+        if (index_to_remove >= 0)
+        {
+           //wall->doors.at(index_to_remove).Draw(wall->Quad(), wall->Normal(), RED);
+
+        }
+
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;

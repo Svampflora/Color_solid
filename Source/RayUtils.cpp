@@ -122,6 +122,8 @@ std::array<Vector3, 4> Quad_strip(const std::array<Vector3, 4>& quad, float norm
     const Vector3 top_right_pos =
         Vector3Lerp(tl, tr, normalized_right);
 
+
+
     return { bottom_right_pos,
              bottom_left_pos,
              top_left_pos,

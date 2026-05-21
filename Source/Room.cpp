@@ -101,7 +101,7 @@ void Aperture::Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall
     DrawQuadLinesEx3D({ w_br_away, w_tr_away, w_tr, w_br }, color);
 }
 
-void Aperture::Draw_2D(Vector2 position) const 
+void Aperture::Draw_2D(Vector2 position) const noexcept
 {
     DrawRectangleV(position, { width, height }, WHITE);
 }
@@ -301,7 +301,6 @@ Skirting::Quads(const std::array<Vector3, 4>& wall_quad,
     return boards;
 }
 
-
 bool Skirting::Is_painted() const noexcept
 {
     return !paint_layers.empty();
@@ -443,10 +442,15 @@ std::vector<std::array<Vector3, 4>> Wall::Paint_quads() const
 
         auto carved = spans[i].aperture->Carve(strip_quad, aperture_quad);
 
+        DrawLine3D(aperture_quad[0], aperture_quad[1], RED);
+        DrawLine3D(strip_quad[0], strip_quad[1], BLUE);
+
+
         result.insert(result.end(), carved.begin(), carved.end());
     }
 
     result = Cut_bottom(result, skirt_board.height);
+
 
     return result;
 }
@@ -701,6 +705,11 @@ bool Wall::Facing_camera(const Vector3 camera_position) const
     return dot > 0.0f;
 }
 
+void Wall::Remove_door(int i)
+{
+    doors.erase(doors.begin() + i);
+}
+
 void Wall::Add_paint(Paint& paint)
 {
     paint_layers.push_back(&paint);
@@ -770,7 +779,6 @@ void Wall::Draw_distance(const Vector3& a, const Vector3& b, const Color& color,
     const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
     const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
     const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
-
 
     const Matrix rotation =
     {
@@ -851,9 +859,9 @@ void Wall::Draw_filled(const Color& color) const
         for (const auto& q : paint_quads)
         {
             DrawQuad(q, color);
+            DrawQuadLinesEx3D(q, GREEN);
         }
 }
-
 
 void Wall::Draw() const
 {

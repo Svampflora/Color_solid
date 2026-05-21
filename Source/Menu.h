@@ -50,7 +50,7 @@ public:
     {
         int i = 0;
 
-        for (auto s : list)
+        for (std::string s : list)
         {
             
             if (CheckCollisionPointRec(GetMousePosition(), Entry_rectangle(i)))
@@ -65,7 +65,7 @@ public:
     void Draw(const Color& color)
     {
         int i = 0;
-        for (auto s : list)
+        for (std::string s : list)
         {
             Draw_line(color, i);
             i++;
@@ -75,7 +75,7 @@ public:
     void Draw_outline()
     {
         int i = 0;
-        for (auto s : list)
+        for (std::string s : list)
         {
             const Rectangle rec = Entry_rectangle(i);
             DrawRectangleLinesEx(rec, 1.0f, GRAY);
@@ -101,7 +101,7 @@ public:
 
 private:
 
-    const float line_height() noexcept
+    const float line_height() const noexcept
     {
         return rectangle.height / list.size();
     }

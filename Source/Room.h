@@ -150,9 +150,9 @@ struct Wall : Paintable
     float Wall_paint_area() const;
     float Liters_used(const Paint* target) const override;
     bool Facing_camera(const Vector3 camera_position) const;
-    void Remove_door(int);
+    void Remove_door(size_t) noexcept;
+    void Remove_window(size_t) noexcept;
     void Add_paint(Paint& paint);
-    //void Try_add_door();
     void Try_add_aperture() noexcept;
     void Draw_area(const TextAnchor3D anchor) const;
     void Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const;

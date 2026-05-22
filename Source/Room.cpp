@@ -705,33 +705,21 @@ bool Wall::Facing_camera(const Vector3 camera_position) const
     return dot > 0.0f;
 }
 
-void Wall::Remove_door(int i)
+void Wall::Remove_door(size_t i) noexcept
 {
     doors.erase(doors.begin() + i);
+}
+
+void Wall::Remove_window(size_t i) noexcept
+{
+    windows.erase(windows.begin() + i);
+
 }
 
 void Wall::Add_paint(Paint& paint)
 {
     paint_layers.push_back(&paint);
 }
-
-//void Wall::Try_add_door() 
-//{
-//
-//    const Entrance door(0.5f, Height());
-//    float total_door_width = door.Width();
-//    for (const auto& _door : doors)
-//    {
-//        total_door_width += _door.Width();
-//    }
-//    if (total_door_width >= Length()) //TODO: make function Availible_edge_space(); take mouse position into account
-//    {
-//        return;
-//    }
-//
-//    //TODO: squeeze in door if possible
-//    doors.push_back(door);
-//}
 
 void Wall::Try_add_aperture() noexcept
 {

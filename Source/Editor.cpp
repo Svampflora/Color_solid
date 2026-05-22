@@ -339,7 +339,7 @@ void Editor::Render() const
 
     if (tool_menu.Selected_index() != -1)
     {
-        tools.at(tool_menu.Selected_index())->DrawOverlay(camera_controller.camera, project);
+        tools.at(tool_menu.Selected_index())->DrawOverlay();
     }
 
     //color_picker.Draw();

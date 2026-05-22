@@ -33,45 +33,18 @@ public:
     //virtual void OnDeactivate() {}
 
     virtual void Update(const Camera& camera, Project& project) = 0;
-    virtual void DrawOverlay(const Camera& camera, const Project& project) const = 0;
+    virtual void DrawOverlay() const = 0;
 
     virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
 };
 
-//class Move : public Tool
-//{
-//
-//
-//public:
-//    const char* Name() const noexcept override { return "Move"; }
-//
-//    void Update(const Camera& camera, Project& project) override
-//    {
-//        const Ray ray = GetMouseRay(GetMousePosition(), camera);
-//        Wall* wall = project.room.Hovered_wall(camera, ray);
-//        if (!wall) return;
-//
-//        const RayCollision collision = RayIntersectsWall(ray, *wall);
-//
-//        
-//
-//        float local_x = wall->Normalized_coordinate(collision.point).x;
-//        Aperture preset(local_x, wall->Height()); // TODO: get preset from preset object / feature settings
-//        const float normalized_width = preset.Width() / wall->Length();
-//
-//        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-//        {
-//
-//
-//        }
-//    }
-//
-//};
-
 class Add_Door : public Tool
 {
 
-    Entrance local_projection(const Ray ray, const Wall wall) const
+    Wall* hovered_wall = nullptr;
+    Ray ray;
+
+    Entrance local_projection(const Wall wall) const
     {
 
         const RayCollision collision = RayIntersectsWall(ray, wall);
@@ -95,41 +68,41 @@ public:
 
     void Update(const Camera& camera, Project& project) override
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
-        Wall* wall = project.room.Hovered_wall(camera, ray);
-        if (!wall) return;
+        hovered_wall = nullptr;
 
-        const RayCollision collision = RayIntersectsWall(ray, *wall); 
-        float local_x = wall->Normalized_coordinate(collision.point).x;
+        ray = GetMouseRay(GetMousePosition(), camera);
+        hovered_wall = project.room.Hovered_wall(camera, ray);
+        if (!hovered_wall) return;
 
-        Entrance entrance = local_projection(ray, *wall);
+        const RayCollision collision = RayIntersectsWall(ray, *hovered_wall);
+        float local_x = hovered_wall->Normalized_coordinate(collision.point).x;
+
+        Entrance entrance = local_projection(*hovered_wall);
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
 
             float total_door_width = entrance.Width();
-            for (const auto& _door : wall->doors)
+            for (const auto& _door : hovered_wall->doors)
             {
                 total_door_width += _door.Width();
             }
-            if (total_door_width >= wall->Length()) //TODO: make function Availible_edge_space(); take mouse position into account
+            if (total_door_width >= hovered_wall->Length()) //TODO: make function Availible_edge_space(); take mouse position into account
             {
                 return;
             }
 
-            wall->doors.emplace_back(local_x, wall->Height());
+            hovered_wall->doors.emplace_back(local_x, hovered_wall->Height());
         }
     }
 
-    void DrawOverlay(const Camera& camera, const Project& project) const override
+    void DrawOverlay() const override
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
-        const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
-        if (!wall) return;
+        if (!hovered_wall) return;
 
-        Entrance entrance = local_projection(ray, *wall);
+        Entrance entrance = local_projection(*hovered_wall);
 
-        entrance.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
+        entrance.Draw(hovered_wall->Quad(), hovered_wall->Normal(), DARKGRAY);
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;
@@ -137,10 +110,12 @@ public:
 
 class Add_Aperture : public Tool
 {
+    Wall* hovered_wall = nullptr;
+    Ray ray;
 
-    Aperture local_projection(const Ray ray, const Wall wall) const
+
+    Aperture local_projection(const Wall wall) const
     {
-
         const RayCollision collision = RayIntersectsWall(ray, wall);
         Vector2 local_position = wall.Normalized_coordinate(collision.point);
         Aperture preset(wall.Normalized_coordinate(collision.point)); // TODO: get preset from preset object / feature settings
@@ -171,28 +146,29 @@ public:
 
     void Update(const Camera& camera, Project& project) override
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
-        Wall* wall = project.room.Hovered_wall(camera, ray);
-        if (!wall) return;
+        hovered_wall = nullptr;
 
-        const RayCollision collision = RayIntersectsWall(ray, *wall);
-        Vector2 local_position = wall->Normalized_coordinate(collision.point);
+        ray = GetMouseRay(GetMousePosition(), camera);
+        hovered_wall = project.room.Hovered_wall(camera, ray);
+        if (!hovered_wall) return;
+
+        const RayCollision collision = RayIntersectsWall(ray, *hovered_wall);
+        Vector2 local_position = hovered_wall->Normalized_coordinate(collision.point);
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            wall->windows.emplace_back(local_position);
+            hovered_wall->windows.emplace_back(local_position);
         }
     }
 
-    void DrawOverlay(const Camera& camera, const Project& project) const override
+    void DrawOverlay() const override
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
-        const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
-        if (!wall) return;
 
-        Aperture aperture = local_projection(ray, *wall);
+        if (!hovered_wall) return;
 
-        aperture.Draw(wall->Quad(), wall->Normal(), DARKGRAY);
+        Aperture aperture = local_projection(*hovered_wall);
+
+        aperture.Draw(hovered_wall->Quad(), hovered_wall->Normal(), DARKGRAY);
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;
@@ -201,53 +177,142 @@ public:
 class Remove : public Tool
 {
 
-    int index_to_remove = -1;
+    struct Aperture_hit
+    {
+        Wall* wall = nullptr;
+        Aperture* aperture = nullptr;
+        size_t index = 0;
+
+        enum class Type
+        {
+            Door,
+            Window
+        } type;
+
+        bool Hit() const noexcept
+        {
+            if (aperture == nullptr)
+            {
+                return false;
+            }
+            return true;;
+        }
+    };
+
+    Aperture_hit hovered;
+
+    Aperture_hit Hovered_aperture(Wall& wall, Vector2 local_position)
+    {
+        for (size_t i = 0; i < wall.doors.size(); ++i)
+        {
+            Aperture& d = wall.doors[i];
+
+
+            const Rectangle rec
+            {
+                d.center.x - half_of(d.Width()) / wall.Length(),
+                d.center.y - half_of(d.Height()) / wall.Height(),
+                d.Width() / wall.Length(),
+                d.Height() / wall.Height()
+            };
+
+            if (CheckCollisionPointRec(local_position, rec))
+            {
+                return Aperture_hit
+                {
+                    &wall,
+                    &d,
+                    i,
+                    Aperture_hit::Type::Door
+                };
+            }
+        }
+
+        for (size_t i = 0; i < wall.windows.size(); ++i)
+        {
+            Aperture& d = wall.windows[i];
+
+            const Rectangle rec
+            {
+                d.center.x - half_of(d.Width()) / wall.Length(),
+                d.center.y - half_of(d.Height()) / wall.Height(),
+                d.Width() / wall.Length(),
+                d.Height() / wall.Height()
+            };
+
+            if (CheckCollisionPointRec(local_position, rec))
+            {
+                return Aperture_hit
+                {
+                    &wall,
+                    &d,
+                    i,
+                    Aperture_hit::Type::Window
+                };
+            }
+        }
+
+        return Aperture_hit();
+    }
 
 
 public:
     const char* Name() const noexcept override { return "Ta bort"; }
 
-    void Update(const Camera& camera, Project& project) override
+    void Update(const Camera& camera,
+        Project& project) override
     {
         const Ray ray = GetMouseRay(GetMousePosition(), camera);
-        Wall* wall = project.room.Hovered_wall(camera, ray);
-        if (!wall) return;
 
-        const RayCollision collision = RayIntersectsWall(ray, *wall);
-        const Vector2 local_position = wall->Normalized_coordinate(collision.point);
+        Wall* wall =
+            project.room.Hovered_wall(camera, ray);
 
-        index_to_remove = -1;
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        if (!wall)
+            return;
+
+        const RayCollision collision =
+            RayIntersectsWall(ray, *wall);
+
+        const Vector2 local_position =
+            wall->Normalized_coordinate(collision.point);
+
+        hovered = Aperture_hit();
+
+        hovered = Hovered_aperture(*wall, local_position);
+
+        if (hovered.Hit() &&
+            IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            for (int i = 0; i < wall->doors.size(); i++)
+            switch (hovered.type)
             {
-                const Vector2 aperture_dimensions{ wall->doors.at(i).Width() , wall->doors.at(i).Height() };
-                const Rectangle local_aperture_rec{ wall->doors.at(i).center.x - half_of(aperture_dimensions.x),  wall->doors.at(i).center.y - half_of(aperture_dimensions.y), aperture_dimensions.x, aperture_dimensions.y };
-                if (CheckCollisionPointRec(local_position, local_aperture_rec))
-                {
-                    index_to_remove = i;
-                }
-            }
-        }
+            case Aperture_hit::Type::Door:
+                hovered.wall->Remove_door(hovered.index);
+                break;
 
-        if (index_to_remove >= 0)
-        {
-            wall->Remove_door(index_to_remove);
+            case Aperture_hit::Type::Window:
+                hovered.wall->Remove_window(
+                    hovered.index);
+                break;
+            }
+
+            hovered = Aperture_hit();
         }
     }
 
-    void DrawOverlay(const Camera& camera, const Project& project) const override
+    void DrawOverlay() const override
     {
-        const Ray ray = GetMouseRay(GetMousePosition(), camera);
-        const Wall* wall = Get_Hovered_wall(camera, project.room.walls);
-        if (!wall) return;
+        if (!hovered.Hit())
+            return;
+        auto quad =
+            hovered.aperture->Quad(
+                hovered.wall->Quad(),
+                hovered.wall->Normal());
 
-        if (index_to_remove >= 0)
-        {
-           //wall->doors.at(index_to_remove).Draw(wall->Quad(), wall->Normal(), RED);
+        DrawQuadLinesEx3D(quad, RED);
 
-        }
-
+        // Draw X
+        DrawLine3D(quad[0], quad[2], RED);
+        DrawLine3D(quad[1], quad[3], RED);
     }
 
     void Draw_swatch(Rectangle rect) const noexcept override;

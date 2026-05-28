@@ -152,6 +152,8 @@ void Editor::Edit()
     Paint_surface();
 
     Drag_handles();
+
+    Alter_skirting();
     
     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
     {
@@ -282,6 +284,31 @@ void Editor::Drag_handles()
         }
     }
 }
+
+void Editor::Alter_skirting()
+{
+//    Wall* hovered_wall = Hovered_wall();
+//
+//    if (hovered_wall)
+//    {
+//         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
+//         Vector3 handle_pos =  hovered_wall->Center();
+//         handle_pos.y = x, hovered_wall->skirt_board.height
+//    };
+//         const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
+//
+//        if (CheckCollisionPointCircle(GetMousePosition(), handle_pos, 10.0f))
+//        {
+//
+//           hovered_wall->skirt_board.height += GetMouseWheelMove();
+//
+//
+//        }
+//
+//    }
+
+}
+
 
 void Editor::Paint_surface()
 {

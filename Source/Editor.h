@@ -111,7 +111,7 @@ public:
 class Add_Aperture : public Tool
 {
     Wall* hovered_wall = nullptr;
-    Ray ray;
+    Ray ray = {};
 
 
     Aperture local_projection(const Wall wall) const
@@ -187,7 +187,7 @@ class Remove : public Tool
         {
             Door,
             Window
-        } type;
+        } type = Type::Window;
 
         bool Hit() const noexcept
         {
@@ -199,13 +199,13 @@ class Remove : public Tool
         }
     };
 
-    Aperture_hit hovered;
+    Aperture_hit hovered = {};
 
     Aperture_hit Hovered_aperture(Wall& wall, Vector2 local_position)
     {
         for (size_t i = 0; i < wall.doors.size(); ++i)
         {
-            Aperture& d = wall.doors[i];
+            Aperture& d = wall.doors.at(i);
 
 
             const Rectangle rec
@@ -361,6 +361,7 @@ private:
     void Build_tool_menu();
     void Select_handle();
     void Select_paint() noexcept;
+    void Alter_skirting();
     void Paint_surface();
     void Drag_handles();
     void Draw_UI() const;

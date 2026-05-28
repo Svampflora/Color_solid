@@ -11,11 +11,13 @@ struct Color;
 struct RayCollision;
 struct Ray;
 
+constexpr float HANDLE_RADIUS = 10.0f;      //TODO: move to settings
+
 struct Handle
 {
     Vector3 last_hit;
     bool selected;
-
+    void* owner = nullptr;
 
     Handle() noexcept
     {
@@ -34,6 +36,8 @@ struct Handle
     }
 
     bool Hovered(const Camera& camera) const;
+
+
 
 };
 

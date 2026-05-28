@@ -18,7 +18,6 @@ const Vector2 TOOL_MENU_POSITION = { 0.1f * SCREEN_WIDTH, 0.2f * SCREEN_HEIGHT }
 Editor::Editor(Project& project_ref, CameraController& camRef) :
     project(project_ref),
     camera_controller(camRef),
-    handle(),
     paint_menu(),
     font()
 {
@@ -50,9 +49,12 @@ void Editor::Build_paint_menu()
 
 void Editor::Make_tools()
 {
+    Tool_context tool_context{ camera_controller.camera, &project, GetFrameTime() };
+
     Add_tool(std::make_unique<Add_Door>());
     Add_tool(std::make_unique<Add_Aperture>());
     Add_tool(std::make_unique<Remove>());
+    Add_tool(std::make_unique<Mirror_resize>(tool_context));
 
 
 }
@@ -81,27 +83,50 @@ const Paint* Editor::Selected_paint() const
     return &project.paints.at(i);
 }
 
-Wall* Editor::Hovered_handle()
+void Mirror_resize::Check_hovered()
 {
+
     const Vector2 mouse = GetMousePosition();
-    constexpr float radius = 10.0f;
 
-    Wall* hovered_wall = nullptr;
-    float closest_distance_sq = radius * radius;
-
-    for (auto& wall : project.room.walls)
+    hovered = nullptr;
+    for (auto& h : handles)
     {
-        const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
-        const float dist_sq = Vector2DistanceSqr(mouse, screen_position);
-
-        if (dist_sq < closest_distance_sq)
+        if (CheckCollisionPointCircle(mouse, GetWorldToScreen(h.Position(), context.camera), HANDLE_RADIUS))
         {
-            closest_distance_sq = dist_sq;
-            hovered_wall = &wall;
+            hovered = &h;
         }
     }
-    return hovered_wall;
+
 }
+
+void Mirror_resize::Drag_handles()
+{
+    if (active)
+    {
+        const Vector3 wall_normal = active->Normal();
+        const Vector3 helper = (fabsf(wall_normal.y) > 0.9f)
+            ? Vector3{ 1, 0, 0 } : Vector3{ 0, 1, 0 };
+
+        const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
+        const Vector3 perp_plane_normal = sideways;
+        const Ray ray = GetMouseRay(GetMousePosition(), context.camera);
+        const float plane_d = Vector3DotProduct(perp_plane_normal, active->Position());
+        const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
+
+        if (hit.hit)
+        {
+            const Vector3 center = active->Position();
+            const Vector3 diff = Vector3Subtract(hit.point, center);
+            const float distance_along_axis = Vector3DotProduct(diff, wall_normal);
+            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, distance_along_axis));
+            const Vector3 move_delta = Vector3Subtract(line_position, active->last_hit);
+            active->last_hit = line_position;
+
+            active->on_drag(Vector3Negate(move_delta));
+        }
+    }
+}
+
 
 const Wall* Get_Hovered_wall(const Camera& camera, const std::vector<Wall>& walls)
 {
@@ -141,38 +166,31 @@ Wall* Editor::Hovered_wall()
     return hovered_wall;
 }
 
+
+
+
 void Editor::Edit()
 {
 
     if (tool_menu.Selected_index() != -1)
     {
         tools.at(tool_menu.Selected_index())->Update(camera_controller.camera, project);
+
     }
+
 
     Paint_surface();
 
-    Drag_handles();
+    //Drag_handles();
 
     Alter_skirting();
     
-    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
-    {
-        handle.selected = false;
-    }
+    //if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+    //{
+    //    handle.selected = false;
+    //}
 }
 
-
-Handle Editor::Make_handle(const Wall* w)
-{
-    Handle _handle{};
-
-    _handle.Position = [w]() { return w->Center(); };
-    _handle.Normal = [w]() { return w->Normal(); };
-    _handle.on_drag = [this,w](auto d) { project.room.Mirror_resize(w->Normal(), d); }; //TODO: should room really Mirror resize() itself? ...no
-    _handle.last_hit = _handle.Position();
-
-    return _handle;
-}
 
 std::unique_ptr<State> Editor::Update()
 {
@@ -214,76 +232,38 @@ std::unique_ptr<State> Editor::Update()
 
 void Editor::Draw_UI() const
 {
-    constexpr float radius = 10.0f;
-    float closest_distance_sq = radius * radius;
-
-    for (const auto& wall : project.room.walls)
-    {
-        const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
-        const float dist_sq = Vector2DistanceSqr(GetMousePosition(), screen_position);
-
-        if (dist_sq < closest_distance_sq)
-        {
-            closest_distance_sq = dist_sq;
-            DrawCircleV(screen_position, radius, WHITE);
-        }
-        else
-        {
-            DrawCircleV(screen_position, 4.0f, GRAY);
-        }
-    }
 
 
+    //for (const auto& wall : project.room.walls)
+    //{
+    //    const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
+    //    const float dist_sq = Vector2DistanceSqr(GetMousePosition(), screen_position);
+
+    //    if (dist_sq < closest_distance_sq)
+    //    {
+    //        closest_distance_sq = dist_sq;
+    //        DrawCircleV(screen_position, radius, WHITE);
+    //    }
+    //    else
+    //    {
+    //        DrawCircleV(screen_position, 4.0f, GRAY);
+    //    }
+    //}
+
+    //if (handle.Active())
+    //{
+    //    if (handle.Hovered(camera_controller.camera) || handle.selected)
+    //    {
+    //        DrawCircleV(GetWorldToScreen(handle.Position(), camera_controller.camera), radius, PINK);
+    //    }
+    //}
 
 
-    if (handle.Active())
-    {
-        if (handle.Hovered(camera_controller.camera) || handle.selected)
-        {
-            DrawCircleV(GetWorldToScreen(handle.Position(), camera_controller.camera), radius, PINK);
-        }
-    }
 
     paint_menu.Draw(PAINT_MENU_POSITION); 
     tool_menu.Draw(TOOL_MENU_POSITION);
 }
 
-void Editor::Drag_handles()
-{
-    if (const Wall* w = Hovered_handle())
-    {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-        {
-            handle = Make_handle(w);
-            handle.selected = true;
-        }
-    }
-    
-    if (handle.selected)
-    {
-        const Vector3 wall_normal = handle.Normal();
-        const Vector3 helper = (fabsf(wall_normal.y) > 0.9f)
-            ? Vector3{ 1, 0, 0 } : Vector3{ 0, 1, 0 };
-
-        const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
-        const Vector3 perp_plane_normal = sideways;
-        const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
-        const float plane_d = Vector3DotProduct(perp_plane_normal, handle.Position());
-        const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
-
-        if (hit.hit)
-        {
-            const Vector3 center = handle.Position();
-            const Vector3 diff = Vector3Subtract(hit.point, center);
-            const float distance_along_axis = Vector3DotProduct(diff, wall_normal); 
-            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, distance_along_axis));
-            const Vector3 move_delta = Vector3Subtract(line_position, handle.last_hit);
-            handle.last_hit = line_position;
-
-            handle.on_drag(Vector3Negate(move_delta));
-        }
-    }
-}
 
 void Editor::Alter_skirting()
 {
@@ -368,6 +348,14 @@ void Editor::Render() const
     {
         tools.at(tool_menu.Selected_index())->DrawOverlay();
     }
+    if (tool_menu.Selected_index() == 3)
+    {
+        camera_controller.End_3D();
+
+        tools.at(tool_menu.Selected_index())->DrawOverlay();
+    }
+
+
 
     //color_picker.Draw();
     camera_controller.End_3D();
@@ -391,6 +379,12 @@ void Add_Aperture::Draw_swatch(Rectangle rect) const noexcept
 }
 
 void Remove::Draw_swatch(Rectangle rect) const noexcept
+{
+    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
+    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+}
+
+void Mirror_resize::Draw_swatch(Rectangle rect) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
     DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);

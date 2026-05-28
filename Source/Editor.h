@@ -303,10 +303,9 @@ public:
     {
         if (!hovered.Hit())
             return;
-        auto quad =
-            hovered.aperture->Quad(
-                hovered.wall->Quad(),
-                hovered.wall->Normal());
+        auto quad = hovered.aperture->Quad(
+                        hovered.wall->Quad(),
+                        hovered.wall->Normal());
 
         DrawQuadLinesEx3D(quad, RED);
 
@@ -318,11 +317,108 @@ public:
     void Draw_swatch(Rectangle rect) const noexcept override;
 };
 
+struct Tool_context
+{
+    Camera camera;
+    Project* project;
+    float dt;
+};
+
+class Mirror_resize : public Tool
+{
+    Tool_context                context;
+    std::vector<Handle>         handles;
+    Handle*                     hovered;
+    Handle*                     active;
+
+    void Check_hovered();
+    void Drag_handles();
+
+
+public:
+    Mirror_resize(Tool_context tool_context) :
+        context (tool_context)
+    {
+        Build_handles(context.project);
+    }
+
+    const char* Name() const noexcept override { return "Dra ut rum"; }
+
+    void Update(const Camera& _camera, Project& _project) override
+    {
+        context.camera = _camera;
+        context.project = &_project;
+
+        Check_hovered();
+        if (hovered)
+        {
+            
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+            {
+                active = hovered;
+                active->selected = true;
+            }
+            else
+            {
+                if (active)
+                {
+                    active->selected = false;
+                    active = nullptr;
+
+                }
+            }
+        }
+
+        if (active)
+        {
+            Drag_handles();
+        }
+    }
+
+    void Build_handles(Project* project)
+    {
+        handles.reserve(project->room.walls.size());
+        for (const Wall& w : project->room.walls)
+        {
+            Handle _handle{};
+
+            _handle.Position = [w]() { return w.Center(); };
+            _handle.Normal = [w]() { return w.Normal(); };
+            _handle.on_drag = [project, w](auto d) { project->room.Mirror_resize(w.Normal(), d); };
+            _handle.last_hit = _handle.Position();
+
+            handles.emplace_back(_handle);
+        }
+    }
+
+    void DrawOverlay() const override
+    {
+
+        for (auto& h : handles)
+        {
+
+            const Vector2 screen = GetWorldToScreen(h.Position(), context.camera);
+
+            Color color = GRAY;
+
+            if (&h == hovered)
+                color = PINK;
+
+            if (h.selected)
+                color = WHITE;
+
+            DrawCircleV(screen, HANDLE_RADIUS, color);
+        }
+    }
+
+    void Draw_swatch(Rectangle rect) const noexcept override;
+
+};
+
 class Editor : public State
 {
     Project&                            project;
     CameraController&                   camera_controller;
-    Handle                              handle;
     Menu                                paint_menu;
     Feature_settings                    feature_settings;
     std::vector<std::unique_ptr<Tool>>  tools;
@@ -344,8 +440,7 @@ public:
         return *tools.at(i);
     }
 private:
-    Handle Make_handle(const Wall* wall);
-    Wall* Hovered_handle();
+    //Handle Make_handle(const Wall* wall);
     Wall* Hovered_wall();
     const Paint* Selected_paint() const;
     Paint* Selected_paint();
@@ -363,7 +458,6 @@ private:
     void Select_paint() noexcept;
     void Alter_skirting();
     void Paint_surface();
-    void Drag_handles();
     void Draw_UI() const;
 };
 

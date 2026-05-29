@@ -16,18 +16,15 @@ constexpr float HANDLE_RADIUS = 10.0f;      //TODO: move to settings
 struct Handle
 {
     Vector3 last_hit;
-    bool selected;
     void* owner = nullptr;
 
     Handle() noexcept
     {
         last_hit = { 0.0f,0.0f,0.0f };
-        selected = false;
     }
 
     std::function<Vector3()> Position;
     std::function<Vector3()> Normal;
-
     std::function<void(const Vector3& delta)> on_drag;
 
     bool Active() const noexcept
@@ -36,9 +33,6 @@ struct Handle
     }
 
     bool Hovered(const Camera& camera) const;
-
-
-
 };
 
 

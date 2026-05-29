@@ -31,7 +31,7 @@ public:
     {
         selected = -1;
     }
-    bool Clicked(Vector2 mouse_position) const noexcept;
+    bool Clicked(Vector2 position, Vector2 mouse_position) const noexcept;
 
 private:
     std::vector<std::unique_ptr<Menu_Icon>> items;

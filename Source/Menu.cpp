@@ -7,7 +7,7 @@ void Menu::Update(Vector2 position) noexcept
 {
     const Vector2 mouse = GetMousePosition();
 
-    if (!Clicked(mouse))
+    if (!Clicked(position, mouse))
     {
         return;
     }
@@ -38,9 +38,9 @@ void Menu::Draw(Vector2 position) const
     }
 }
 
-bool Menu::Clicked(Vector2 mouse_position) const noexcept
+bool Menu::Clicked(Vector2 position, Vector2 mouse_position) const noexcept
 {
-    const Rectangle entire_menu = { mouse_position.x, mouse_position.y, ICON_SIZE.x, (items.size() * ICON_SIZE.y) + (items.size() * ICON_PADDING) };
+    const Rectangle entire_menu = { position.x, position.y, ICON_SIZE.x, (items.size() * ICON_SIZE.y) + (items.size() * ICON_PADDING) };
 
     if (CheckCollisionPointRec(mouse_position, entire_menu))
     {

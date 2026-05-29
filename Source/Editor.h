@@ -280,8 +280,7 @@ public:
 
         hovered = Hovered_aperture(*wall, local_position);
 
-        if (hovered.Hit() &&
-            IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        if (hovered.Hit() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
             switch (hovered.type)
             {
@@ -352,26 +351,25 @@ public:
         Check_hovered();
         if (hovered)
         {
-            
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
             {
                 active = hovered;
-                active->selected = true;
-            }
-            else
-            {
-                if (active)
-                {
-                    active->selected = false;
-                    active = nullptr;
-
-                }
+                active->last_hit = active->Position();
+                hovered->last_hit = hovered->Position();
             }
         }
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+        {
+            if (active)
+            {
+                active = nullptr;
+            }
 
+        }
         if (active)
         {
             Drag_handles();
+
         }
     }
 
@@ -404,7 +402,7 @@ public:
             if (&h == hovered)
                 color = PINK;
 
-            if (h.selected)
+            if (&h == active)
                 color = WHITE;
 
             DrawCircleV(screen, HANDLE_RADIUS, color);
@@ -456,7 +454,6 @@ private:
     void Build_tool_menu();
     void Select_handle();
     void Select_paint() noexcept;
-    void Alter_skirting();
     void Paint_surface();
     void Draw_UI() const;
 };

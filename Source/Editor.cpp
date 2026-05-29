@@ -85,7 +85,6 @@ const Paint* Editor::Selected_paint() const
 
 void Mirror_resize::Check_hovered()
 {
-
     const Vector2 mouse = GetMousePosition();
 
     hovered = nullptr;
@@ -96,7 +95,6 @@ void Mirror_resize::Check_hovered()
             hovered = &h;
         }
     }
-
 }
 
 void Mirror_resize::Drag_handles()
@@ -171,24 +169,13 @@ Wall* Editor::Hovered_wall()
 
 void Editor::Edit()
 {
-
     if (tool_menu.Selected_index() != -1)
     {
         tools.at(tool_menu.Selected_index())->Update(camera_controller.camera, project);
 
     }
 
-
     Paint_surface();
-
-    //Drag_handles();
-
-    Alter_skirting();
-    
-    //if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
-    //{
-    //    handle.selected = false;
-    //}
 }
 
 
@@ -212,17 +199,16 @@ std::unique_ptr<State> Editor::Update()
     {
         const Vector2 mouse_position = GetMousePosition();
 
-        if (paint_menu.Clicked(mouse_position))
+        if (paint_menu.Clicked(PAINT_MENU_POSITION, mouse_position))
         {
             tool_menu.Deselect();
         }
 
-        if (tool_menu.Clicked(mouse_position))
+        if (tool_menu.Clicked(TOOL_MENU_POSITION, mouse_position))
         {
             paint_menu.Deselect();
         }
     }
-
 
     paint_menu.Update(PAINT_MENU_POSITION); 
     tool_menu.Update(TOOL_MENU_POSITION);   
@@ -232,63 +218,9 @@ std::unique_ptr<State> Editor::Update()
 
 void Editor::Draw_UI() const
 {
-
-
-    //for (const auto& wall : project.room.walls)
-    //{
-    //    const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
-    //    const float dist_sq = Vector2DistanceSqr(GetMousePosition(), screen_position);
-
-    //    if (dist_sq < closest_distance_sq)
-    //    {
-    //        closest_distance_sq = dist_sq;
-    //        DrawCircleV(screen_position, radius, WHITE);
-    //    }
-    //    else
-    //    {
-    //        DrawCircleV(screen_position, 4.0f, GRAY);
-    //    }
-    //}
-
-    //if (handle.Active())
-    //{
-    //    if (handle.Hovered(camera_controller.camera) || handle.selected)
-    //    {
-    //        DrawCircleV(GetWorldToScreen(handle.Position(), camera_controller.camera), radius, PINK);
-    //    }
-    //}
-
-
-
     paint_menu.Draw(PAINT_MENU_POSITION); 
     tool_menu.Draw(TOOL_MENU_POSITION);
 }
-
-
-void Editor::Alter_skirting()
-{
-//    Wall* hovered_wall = Hovered_wall();
-//
-//    if (hovered_wall)
-//    {
-//         const Ray ray = GetMouseRay(GetMousePosition(), camera_controller.camera);
-//         Vector3 handle_pos =  hovered_wall->Center();
-//         handle_pos.y = x, hovered_wall->skirt_board.height
-//    };
-//         const Vector2 screen_position = GetWorldToScreen(wall.Center(), camera_controller.camera);
-//
-//        if (CheckCollisionPointCircle(GetMousePosition(), handle_pos, 10.0f))
-//        {
-//
-//           hovered_wall->skirt_board.height += GetMouseWheelMove();
-//
-//
-//        }
-//
-//    }
-
-}
-
 
 void Editor::Paint_surface()
 {

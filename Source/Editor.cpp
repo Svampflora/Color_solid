@@ -295,29 +295,3 @@ void Editor::Render() const
     Draw_UI();
 
 };
-
-
-void Add_Door::Draw_swatch(Rectangle rect) const noexcept
-{
-    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
-}
-
-
-void Add_Aperture::Draw_swatch(Rectangle rect) const noexcept
-{
-    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
-}
-
-void Remove::Draw_swatch(Rectangle rect) const noexcept
-{
-    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
-}
-
-void Mirror_resize::Draw_swatch(Rectangle rect) const noexcept
-{
-    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
-}

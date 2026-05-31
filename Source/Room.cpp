@@ -705,6 +705,11 @@ bool Wall::Facing_camera(const Vector3 camera_position) const
     return dot > 0.0f;
 }
 
+void Wall::Alter_skirting(float height)
+{
+    skirt_board.Set_height(height);
+}
+
 void Wall::Remove_door(size_t i) noexcept
 {
     doors.erase(doors.begin() + i);
@@ -974,9 +979,8 @@ float Room::Liters_used(const Paint* target) const
     return total;
 }
 
-void Room::Mirror_resize(const Vector3& direction, const Vector3& move_delta)
+void Room::Mirror_resize(const Vector3& direction, const Vector3& move_delta) //Todo: perhaps move to Tool and remove Handle::On_draw()?
 {
-
     for (Vector3& corner : corners)
     {
         const Vector3 to_corner = Vector3Subtract(corner, position);

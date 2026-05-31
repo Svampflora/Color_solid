@@ -149,6 +149,7 @@ struct Wall : Paintable
     float Wall_paint_area() const;
     float Liters_used(const Paint* target) const override;
     bool Facing_camera(const Vector3 camera_position) const;
+    void Alter_skirting(float height);
     void Remove_door(size_t) noexcept;
     void Remove_window(size_t) noexcept;
     void Add_paint(Paint& paint);
@@ -178,13 +179,13 @@ struct Room : Paintable
 
     Room();
 
+    Vector3 Center() const;
     float Total_wall_paint_area() const;
     float Selected_wall_area() const;
-    void Generate_box_room(float width, float length, float height);
     float Liters_used(const Paint* target) const override;
+    void Generate_box_room(float width, float length, float height);
     void Mirror_resize(const Vector3& direction, const Vector3& move_delta);
     void Draw_walls() const;
-    Vector3 Center() const;
 
     Wall* Hovered_wall(const Camera& camera, const Ray& ray)
     {

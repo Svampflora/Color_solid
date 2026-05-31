@@ -13,13 +13,77 @@ public:
 
     virtual const char* Name() const = 0;
 
-    //virtual void On_activate() {}
-    //virtual void On_deactivate() {}
-
     virtual void Update(const Camera& camera, Project& project) = 0;
-    virtual void DrawOverlay() const = 0;
+    virtual void On_enter() noexcept {}
+    virtual void On_leave() noexcept {}
 
+    virtual void Draw_overlay_3D() const {}
+    virtual void Draw_overlay_2D() const {}
     virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
+};
+
+class Handled_Tool : public Tool
+{
+protected:
+
+    std::vector<Handle>     handles;
+    std::vector<Handle*>    selected;
+    Handle*                 hovered = nullptr;
+
+    void Check_hovered(const Camera&);
+    void Draw_handles(const Camera&) const;
+
+    void On_leave() noexcept override
+    {
+        hovered = nullptr;
+        selected.clear();
+    }
+
+    bool Is_selected(const Handle* handle) const
+    {
+        return std::find(
+            selected.begin(),
+            selected.end(),
+            handle)
+            != selected.end();
+    }
+    virtual void Select(Handle* handle)
+    {
+        if (!handle)
+            return;
+
+        if (!Is_selected(handle))
+        {
+            selected.push_back(handle);
+        }
+    }
+    void Deselect(Handle* handle)
+    {
+        selected.erase(
+            std::remove(
+                selected.begin(),
+                selected.end(),
+                handle),
+            selected.end());
+    }
+    void Toggle_selection(Handle* handle)
+    {
+        if (!handle)
+            return;
+
+        if (Is_selected(handle))
+        {
+            Deselect(handle);
+        }
+        else
+        {
+            Select(handle);
+        }
+    }
+    void Clear_selection() noexcept
+    {
+        selected.clear();
+    }
 };
 
 class Add_Door : public Tool
@@ -32,7 +96,7 @@ class Add_Door : public Tool
 public:
     const char* Name() const noexcept override { return "Lägg till Dörr"; }
     void Update(const Camera& camera, Project& project) override;
-    void DrawOverlay() const override;
+    void Draw_overlay_3D() const override;
     void Draw_swatch(Rectangle rect) const noexcept override;
 };
 
@@ -46,7 +110,7 @@ class Add_Aperture : public Tool
 public:
     const char* Name() const noexcept override { return "Lägg till Fönster"; }
     void Update(const Camera& camera, Project& project) override;
-    void DrawOverlay() const override;
+    void Draw_overlay_3D() const override;
     void Draw_swatch(Rectangle rect) const noexcept override;
 };
 
@@ -82,7 +146,7 @@ class Remove : public Tool
 public:
     const char* Name() const noexcept override { return "Ta bort"; }
     void Update(const Camera& camera, Project& project) override;
-    void DrawOverlay() const override;
+    void Draw_overlay_3D() const override;
     void Draw_swatch(Rectangle rect) const noexcept override;
 };
 
@@ -93,28 +157,50 @@ struct Tool_context
     float       dt;
 };
 
-class Mirror_resize : public Tool
+class Mirror_resize : public Handled_Tool
 {
     Tool_context            context;
-    std::vector<Handle>     handles;
-    Handle*                 hovered;
-    Handle*                 active;
 
-    void Check_hovered();
-    void Drag_handles();
-
-
+    Handle* Selected();
+    void Select(Handle* handle) override;
 public:
     Mirror_resize(Tool_context tool_context) :
+    context(tool_context)
+    {
+        selected.push_back(nullptr);
+        Build_handles(context.project);
+    }
+
+    void On_leave() noexcept override
+    {
+        hovered = nullptr;
+        selected.at(0) = nullptr;
+    }
+
+    const char* Name() const noexcept override { return "Spegel-dra rum"; }
+    void Drag_handles();
+    void Update(const Camera& _camera, Project& _project) override;
+    void Build_handles(Project* project);
+    void Draw_overlay_2D() const override;
+    void Draw_swatch(Rectangle rect) const noexcept override;
+};
+
+class Skirting_resize : public Handled_Tool
+{
+    Tool_context    context;
+
+public:
+    Skirting_resize (Tool_context tool_context) :
     context(tool_context)
     {
         Build_handles(context.project);
     }
 
-    const char* Name() const noexcept override { return "Dra ut rum"; }
+    const char* Name() const noexcept override { return "Dra ut golvlist"; }
     void Update(const Camera& _camera, Project& _project) override;
     void Build_handles(Project* project);
-    void DrawOverlay() const override;
+
+    void Draw_overlay_2D() const override;
     void Draw_swatch(Rectangle rect) const noexcept override;
 
 };

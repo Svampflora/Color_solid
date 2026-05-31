@@ -19,6 +19,10 @@ Editor::Editor(Project& project_ref, CameraController& camRef) :
     project(project_ref),
     camera_controller(camRef),
     paint_menu(),
+    feature_settings(),
+    tools(),
+    active_tool_index{-1},
+    tool_menu(),
     font()
 {
     camera_controller.Set_birds_eye();
@@ -55,6 +59,7 @@ void Editor::Make_tools()
     Add_tool(std::make_unique<Add_Aperture>());
     Add_tool(std::make_unique<Remove>());
     Add_tool(std::make_unique<Mirror_resize>(tool_context));
+    Add_tool(std::make_unique<Skirting_resize>(tool_context));
 
 
 }
@@ -67,6 +72,17 @@ void Editor::Build_tool_menu()
     {
         tool_menu.Add_item(std::make_unique<Tool_Icon>(this, i));
     }
+}
+
+void Editor::Select_tool(int index)
+{
+
+    if (active_tool_index >= 0)
+        tools.at(active_tool_index)->On_leave();
+
+    active_tool_index = index;
+
+    tools.at(active_tool_index)->On_enter();
 }
 
 Paint* Editor::Selected_paint()
@@ -82,49 +98,6 @@ const Paint* Editor::Selected_paint() const
     if (i < 0) return nullptr;
     return &project.paints.at(i);
 }
-
-void Mirror_resize::Check_hovered()
-{
-    const Vector2 mouse = GetMousePosition();
-
-    hovered = nullptr;
-    for (auto& h : handles)
-    {
-        if (CheckCollisionPointCircle(mouse, GetWorldToScreen(h.Position(), context.camera), HANDLE_RADIUS))
-        {
-            hovered = &h;
-        }
-    }
-}
-
-void Mirror_resize::Drag_handles()
-{
-    if (active)
-    {
-        const Vector3 wall_normal = active->Normal();
-        const Vector3 helper = (fabsf(wall_normal.y) > 0.9f)
-            ? Vector3{ 1, 0, 0 } : Vector3{ 0, 1, 0 };
-
-        const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
-        const Vector3 perp_plane_normal = sideways;
-        const Ray ray = GetMouseRay(GetMousePosition(), context.camera);
-        const float plane_d = Vector3DotProduct(perp_plane_normal, active->Position());
-        const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
-
-        if (hit.hit)
-        {
-            const Vector3 center = active->Position();
-            const Vector3 diff = Vector3Subtract(hit.point, center);
-            const float distance_along_axis = Vector3DotProduct(diff, wall_normal);
-            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, distance_along_axis));
-            const Vector3 move_delta = Vector3Subtract(line_position, active->last_hit);
-            active->last_hit = line_position;
-
-            active->on_drag(Vector3Negate(move_delta));
-        }
-    }
-}
-
 
 const Wall* Get_Hovered_wall(const Camera& camera, const std::vector<Wall>& walls)
 {
@@ -169,9 +142,15 @@ Wall* Editor::Hovered_wall()
 
 void Editor::Edit()
 {
-    if (tool_menu.Selected_index() != -1)
+    int selected_tool_index = tool_menu.Selected_index();
+    if (active_tool_index != selected_tool_index)
     {
-        tools.at(tool_menu.Selected_index())->Update(camera_controller.camera, project);
+        Select_tool(selected_tool_index);
+    }
+
+    if (active_tool_index != -1)
+    {
+        tools.at(active_tool_index)->Update(camera_controller.camera, project);
 
     }
 
@@ -220,6 +199,11 @@ void Editor::Draw_UI() const
 {
     paint_menu.Draw(PAINT_MENU_POSITION); 
     tool_menu.Draw(TOOL_MENU_POSITION);
+
+    if (tool_menu.Selected_index() != -1)
+    {
+        tools.at(tool_menu.Selected_index())->Draw_overlay_2D();
+    }
 }
 
 void Editor::Paint_surface()
@@ -276,20 +260,12 @@ void Editor::Render() const
         }
     }
 
+
     if (tool_menu.Selected_index() != -1)
     {
-        tools.at(tool_menu.Selected_index())->DrawOverlay();
-    }
-    if (tool_menu.Selected_index() == 3)
-    {
-        camera_controller.End_3D();
-
-        tools.at(tool_menu.Selected_index())->DrawOverlay();
+        tools.at(tool_menu.Selected_index())->Draw_overlay_3D();
     }
 
-
-
-    //color_picker.Draw();
     camera_controller.End_3D();
 
     Draw_UI();

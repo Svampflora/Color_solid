@@ -1,6 +1,12 @@
 #include "Tool.h"
 
+#include <codeanalysis\warnings.h>
+#pragma warning(push)
+#pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
+#include "raymath.h"
+#pragma warning(pop)
 
+#include <iostream>
 
 Entrance Add_Door::local_projection(const Wall wall) const
 {
@@ -50,7 +56,7 @@ void Add_Door::Update(const Camera& camera, Project& project)
     }
 }
 
-void Add_Door::DrawOverlay() const
+void Add_Door::Draw_overlay_3D() const
 {
     if (!hovered_wall) return;
 
@@ -112,7 +118,7 @@ void Add_Aperture::Update(const Camera& camera, Project& project)
     }
 }
 
-void Add_Aperture::DrawOverlay() const
+void Add_Aperture::Draw_overlay_3D() const
 {
 
     if (!hovered_wall) return;
@@ -220,7 +226,7 @@ void Remove::Update(const Camera& camera, Project& project)
     }
 }
 
-void Remove::DrawOverlay() const
+void Remove::Draw_overlay_3D() const
 {
     if (!hovered.Hit())
         return;
@@ -241,30 +247,108 @@ void Remove::Draw_swatch(Rectangle rect) const noexcept
     DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
 }
 
+void Handled_Tool::Check_hovered(const Camera& camera)
+{
+    const Vector2 mouse = GetMousePosition();
+
+    hovered = nullptr;
+    for (auto& h : handles)
+    {
+        if (CheckCollisionPointCircle(mouse, GetWorldToScreen(h.Position(), camera), HANDLE_RADIUS))
+        {
+            hovered = &h;
+        }
+    }
+}
+
+void Handled_Tool::Draw_handles(const Camera& camera) const
+{
+    for (auto& h : handles)
+    {
+        const Vector2 screen = GetWorldToScreen(h.Position(), camera);
+
+        Color color = GRAY;
+
+        if (&h == hovered)
+            color = PINK;
+
+        DrawCircleV(screen, HANDLE_RADIUS, color);
+    }
+
+
+    for (auto& h : selected)
+    {
+        if (h)
+        {
+            const Vector2 screen = GetWorldToScreen(h->Position(), camera);
+
+            DrawCircleV(screen, HANDLE_RADIUS, WHITE);
+        }
+    }
+}
+
+Handle* Mirror_resize::Selected()
+{
+    return selected.at(0);
+}
+
+void Mirror_resize::Select(Handle* handle)
+{
+    selected.at(0) = handle;
+}
+
+void Mirror_resize::Drag_handles()
+{
+
+    if (Selected())
+    {
+        Handle* active_handle = Selected();
+
+        const Vector3 wall_normal = active_handle->Normal();
+        const Vector3 helper = (fabsf(wall_normal.y) > 0.9f)
+            ? Vector3{ 1, 0, 0 } : Vector3{ 0, 1, 0 };
+
+        const Vector3 sideways = Vector3Normalize(Vector3CrossProduct(helper, wall_normal));
+        const Vector3 perp_plane_normal = sideways;
+        const Ray ray = GetMouseRay(GetMousePosition(), context.camera);
+        const float plane_d = Vector3DotProduct(perp_plane_normal, active_handle->Position());
+        const RayHit hit = RayIntersectPlane(ray, perp_plane_normal, plane_d);
+
+        if (hit.hit)
+        {
+            const Vector3 center = active_handle->Position();
+            const Vector3 diff = Vector3Subtract(hit.point, center);
+            const float distance_along_axis = Vector3DotProduct(diff, wall_normal);
+            const Vector3 line_position = Vector3Add(center, Vector3Scale(wall_normal, distance_along_axis));
+            const Vector3 move_delta = Vector3Subtract(line_position, active_handle->last_hit);
+            active_handle->last_hit = line_position;
+
+            active_handle->on_drag(Vector3Negate(move_delta));
+        }
+    }
+}
+
 void Mirror_resize::Update(const Camera& _camera, Project& _project)
 {
     context.camera = _camera;
     context.project = &_project;
 
-    Check_hovered();
+    Check_hovered(context.camera);
     if (hovered)
     {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            active = hovered;
-            active->last_hit = active->Position();
-            hovered->last_hit = hovered->Position();
+            Select(hovered);
         }
     }
     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
     {
-        if (active)
+        if (Selected())
         {
-            active = nullptr;
+            Select(nullptr);
         }
-
     }
-    if (active)
+    if (Selected())
     {
         Drag_handles();
 
@@ -287,26 +371,64 @@ void Mirror_resize::Build_handles(Project* project)
     }
 }
 
-void Mirror_resize::DrawOverlay() const
+void Mirror_resize::Draw_overlay_2D() const
 {
-
-    for (auto& h : handles)
-    {
-        const Vector2 screen = GetWorldToScreen(h.Position(), context.camera);
-
-        Color color = GRAY;
-
-        if (&h == hovered)
-            color = PINK;
-
-        if (&h == active)
-            color = WHITE;
-
-        DrawCircleV(screen, HANDLE_RADIUS, color);
-    }
+    Draw_handles(context.camera);
 }
 
 void Mirror_resize::Draw_swatch(Rectangle rect) const noexcept
+{
+    DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
+    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+}
+
+void Skirting_resize::Update(const Camera& _camera, Project& _project)
+{
+    context.camera = _camera;
+    context.project = &_project;
+
+    if (!IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        return;
+
+    if (hovered)
+    {
+        Toggle_selection(hovered);
+    }
+    else
+    {
+        Clear_selection();
+    }
+}
+
+
+void Skirting_resize::Build_handles(Project* project)
+{
+    handles.clear();
+
+    for (const Wall& w : project->room.walls)
+    {
+        if (w.skirt_board.height > 0)
+        {
+             Handle _handle{};
+
+             _handle.Position = [w]() { return w.Floor_edge(); };
+             _handle.Normal = [w]() { return w.Normal(); };
+            // _handle.on_drag = [project, w](auto d) { project->room.Mirror_resize(w.Normal(), d); };
+             _handle.last_hit = _handle.Position();
+
+             handles.push_back(_handle);
+
+        }
+    }
+}
+
+void Skirting_resize::Draw_overlay_2D() const
+{
+
+    Draw_handles(context.camera);
+}
+
+void Skirting_resize::Draw_swatch(Rectangle rect) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
     DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);

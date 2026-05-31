@@ -30,6 +30,7 @@ class Editor : public State
     Menu                                paint_menu;
     Feature_settings                    feature_settings;
     std::vector<std::unique_ptr<Tool>>  tools;
+    int                                 active_tool_index;
     Menu                                tool_menu;
     Font                                font;
 
@@ -63,6 +64,7 @@ private:
     void Build_paint_menu();
     void Build_tool_menu();
     void Select_handle();
+    void Select_tool(int index);
     void Select_paint() noexcept;
     void Paint_surface();
     void Draw_UI() const;

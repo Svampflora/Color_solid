@@ -313,6 +313,9 @@ void Skirting::Add_Paint(Paint& paint)
 
 void Skirting::Set_height(const float& new_height) noexcept
 {
+    if (new_height < 0)
+        return;
+
     height = new_height;
 }
 
@@ -736,8 +739,11 @@ bool Wall::Facing_camera(const Vector3 camera_position) const
     return dot > 0.0f;
 }
 
-void Wall::Alter_skirting(float height) noexcept
+void Wall::Alter_skirting(float height)
 {
+    if (Height() < height)
+        return;
+
     skirt_board.Set_height(height);
 }
 
@@ -883,7 +889,7 @@ void Wall::Draw_filled(const Color& color) const
         for (const auto& q : paint_quads)
         {
             DrawQuad(q, color);
-            DrawQuadLinesEx3D(q, GREEN);
+            //DrawQuadLinesEx3D(q, GREEN);
         }
 }
 

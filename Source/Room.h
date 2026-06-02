@@ -114,8 +114,6 @@ struct Skirting
     void Set_height(const float& new_height) noexcept;
     void Draw(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal, const Color& color) const;
     void Draw_outline(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal, const Color& color) const;
-
-
 };
 
 struct Wall : Paintable
@@ -150,7 +148,7 @@ struct Wall : Paintable
     float Wall_paint_area() const;
     float Liters_used(const Paint* target) const override;
     bool Facing_camera(const Vector3 camera_position) const;
-    void Alter_skirting(float height) noexcept;
+    void Alter_skirting(float height);
     void Remove_door(size_t) noexcept;
     void Remove_window(size_t) noexcept;
     void Add_paint(Paint& paint);

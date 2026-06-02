@@ -394,6 +394,22 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
         Drag_handles();
     }
 
+    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+    {
+
+        const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
+        const Wall* wall = context.project->room.Hovered_wall(context.camera, mouse_ray);
+        if (!wall)
+            return;
+
+        const RayCollision collision = RayIntersectsWall(mouse_ray, *wall);
+
+        for (auto* s : selected)
+        {
+            s->last_hit = collision.point;
+        }
+    }
+
     if (IsMouseButtonReleased(MOUSE_RIGHT_BUTTON))
     {
         if (hovered)
@@ -418,22 +434,7 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
         {
             Clear_selection();
         }
-
-        const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
-        const Wall* wall = context.project->room.Hovered_wall(context.camera, mouse_ray);
-        if (!wall)
-            return;
-
-        const RayCollision collision = RayIntersectsWall(mouse_ray, *wall);
-
-            for (auto* s : selected)
-            {
-                s->last_hit = collision.point;
-            }
-
     }
-
-
 }
 
 
@@ -449,6 +450,7 @@ void Skirting_resize::Build_handles(Project* project)
         {
              Handle _handle{};
 
+             _handle.owner = wall;
              _handle.Position = [ wall]() { return wall->Closest_skirting_position(wall->Center()); };
              _handle.Normal = [wall]() { return wall->Normal(); };
              _handle.on_drag = [project, wall](Vector3 d) { wall->Alter_skirting(d.y) ; };
@@ -471,16 +473,39 @@ void Skirting_resize::Drag_handles()
 
     for (const auto* s : selected)
     {
-        const Vector3 delta =
-            Vector3Subtract(
-                collision.point,
-                s->last_hit);
+        const Vector3 delta = Vector3Subtract( collision.point, s->last_hit);
 
         s->on_drag(delta);
-
-       // s->last_hit = collision.point;
     }
 }
+
+//void Skirting_resize::Drag_handles()
+//{
+//    const Ray mouse_ray =
+//        GetMouseRay(
+//            GetMousePosition(),
+//            context.camera);
+//
+//    for (Handle* s : selected)
+//    {
+//        const RayCollision collision =
+//            RayIntersectsWall(
+//                mouse_ray,
+//                *s->owner);
+//
+//        if (!collision.hit)
+//            continue;
+//
+//        const Vector3 delta =
+//            Vector3Subtract(
+//                collision.point,
+//                s->last_hit);
+//
+//        s->on_drag(delta);
+//
+//        s->last_hit = collision.point;
+//    }
+//}
 
 void Skirting_resize::Draw_overlay_2D() const
 {

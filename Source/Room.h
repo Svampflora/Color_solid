@@ -141,6 +141,7 @@ struct Wall : Paintable
     Vector3 Position(const Vector2& normalized_coordinate) const;
     Vector3 Normal() const;
     Vector3 Floor_edge() const;
+    Vector3 Closest_skirting_position(const Vector3& point) const;
     Vector3 Up() const;
     Vector2 Normalized_coordinate(const Vector3& position) const;
     float Length() const;
@@ -149,7 +150,7 @@ struct Wall : Paintable
     float Wall_paint_area() const;
     float Liters_used(const Paint* target) const override;
     bool Facing_camera(const Vector3 camera_position) const;
-    void Alter_skirting(float height);
+    void Alter_skirting(float height) noexcept;
     void Remove_door(size_t) noexcept;
     void Remove_window(size_t) noexcept;
     void Add_paint(Paint& paint);

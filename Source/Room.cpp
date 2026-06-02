@@ -568,6 +568,36 @@ Vector3 Wall::Floor_edge() const
     return Vector3Subtract(Vertex(1), Vertex(0));
 }
 
+Vector3 Wall::Closest_skirting_position( const Vector3& point) const
+{
+    const float v =
+        skirt_board.height / Height();
+
+    const Vector3 left =
+        Position({ 0.0f, v });
+
+    const Vector3 right =
+        Position({ 1.0f, v });
+
+    const Vector3 line =
+        Vector3Subtract(right, left);
+
+    const float length_sq =
+        Vector3LengthSqr(line);
+
+    if (length_sq <= 0.0f)
+        return left;
+
+    float t =
+        Vector3DotProduct(
+            Vector3Subtract(point, left),
+            line) / length_sq;
+
+    t = Clamp(t, 0.0f, 1.0f);
+
+    return Vector3Lerp(left, right, t);
+}
+
 Vector3 Wall::Up() const
 {
     auto q = Quad();
@@ -695,6 +725,7 @@ float Wall::Liters_used(const Paint* target) const
         }
     }
 
+
     return total;
 }
 
@@ -705,7 +736,7 @@ bool Wall::Facing_camera(const Vector3 camera_position) const
     return dot > 0.0f;
 }
 
-void Wall::Alter_skirting(float height)
+void Wall::Alter_skirting(float height) noexcept
 {
     skirt_board.Set_height(height);
 }

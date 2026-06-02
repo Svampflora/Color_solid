@@ -387,17 +387,53 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
     context.camera = _camera;
     context.project = &_project;
 
-    if (!IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-        return;
+    Check_hovered(context.camera);
 
-    if (hovered)
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
     {
-        Toggle_selection(hovered);
+        Drag_handles();
     }
-    else
+
+    if (IsMouseButtonReleased(MOUSE_RIGHT_BUTTON))
     {
-        Clear_selection();
+        if (hovered)
+        {
+            if (selected.empty())
+            {
+                Select_all();
+            }
+            else if(selected.size() == handles.size())
+            {
+                Clear_selection();
+                Toggle_selection(hovered);
+
+            }
+            else
+            {
+                Toggle_selection(hovered);
+
+            }
+        }
+        else
+        {
+            Clear_selection();
+        }
+
+        const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
+        const Wall* wall = context.project->room.Hovered_wall(context.camera, mouse_ray);
+        if (!wall)
+            return;
+
+        const RayCollision collision = RayIntersectsWall(mouse_ray, *wall);
+
+            for (auto* s : selected)
+            {
+                s->last_hit = collision.point;
+            }
+
     }
+
+
 }
 
 
@@ -405,20 +441,44 @@ void Skirting_resize::Build_handles(Project* project)
 {
     handles.clear();
 
-    for (const Wall& w : project->room.walls)
+    for (Wall& w : project->room.walls)
     {
+        Wall* wall = &w;
+
         if (w.skirt_board.height > 0)
         {
              Handle _handle{};
 
-             _handle.Position = [w]() { return w.Floor_edge(); };
-             _handle.Normal = [w]() { return w.Normal(); };
-            // _handle.on_drag = [project, w](auto d) { project->room.Mirror_resize(w.Normal(), d); };
+             _handle.Position = [ wall]() { return wall->Closest_skirting_position(wall->Center()); };
+             _handle.Normal = [wall]() { return wall->Normal(); };
+             _handle.on_drag = [project, wall](Vector3 d) { wall->Alter_skirting(d.y) ; };
              _handle.last_hit = _handle.Position();
 
              handles.push_back(_handle);
 
         }
+    }
+}
+
+void Skirting_resize::Drag_handles()
+{
+    const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
+    const Wall* wall = context.project->room.Hovered_wall(context.camera, mouse_ray);
+    if (!wall)
+        return;
+
+    const RayCollision collision = RayIntersectsWall(mouse_ray, *wall);
+
+    for (const auto* s : selected)
+    {
+        const Vector3 delta =
+            Vector3Subtract(
+                collision.point,
+                s->last_hit);
+
+        s->on_drag(delta);
+
+       // s->last_hit = collision.point;
     }
 }
 
@@ -433,3 +493,5 @@ void Skirting_resize::Draw_swatch(Rectangle rect) const noexcept
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
     DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
 }
+
+

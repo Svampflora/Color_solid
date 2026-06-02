@@ -82,6 +82,7 @@ void Editor::Select_tool(int index)
 
     active_tool_index = index;
 
+    if (active_tool_index >= 0)
     tools.at(active_tool_index)->On_enter();
 }
 
@@ -142,7 +143,7 @@ Wall* Editor::Hovered_wall()
 
 void Editor::Edit()
 {
-    int selected_tool_index = tool_menu.Selected_index();
+    const int selected_tool_index = tool_menu.Selected_index();
     if (active_tool_index != selected_tool_index)
     {
         Select_tool(selected_tool_index);

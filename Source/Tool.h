@@ -66,6 +66,16 @@ protected:
                 handle),
             selected.end());
     }
+
+    void Select_all()
+    {
+        selected.clear();
+        selected.reserve(handles.size());
+        for (auto& h : handles)
+        {
+            selected.emplace_back(std::addressof(h));
+        }
+    }
     void Toggle_selection(Handle* handle)
     {
         if (!handle)
@@ -199,7 +209,7 @@ public:
     const char* Name() const noexcept override { return "Dra ut golvlist"; }
     void Update(const Camera& _camera, Project& _project) override;
     void Build_handles(Project* project);
-
+    void Drag_handles();
     void Draw_overlay_2D() const override;
     void Draw_swatch(Rectangle rect) const noexcept override;
 

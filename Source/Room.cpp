@@ -262,9 +262,7 @@ float Skirting::Area(const std::array<Vector3, 4>& wall_quad, const std::vector<
 }
 
 std::vector<std::array<Vector3, 4>>
-Skirting::Quads(const std::array<Vector3, 4>& wall_quad,
-    const std::vector<Entrance>& entrances,
-    const Vector3 wall_normal) const
+Skirting::Quads(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3 wall_normal) const
 {
     std::vector<std::array<Vector3, 4>> boards;
 

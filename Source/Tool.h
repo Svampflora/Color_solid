@@ -121,7 +121,7 @@ public:
     const char* Name() const noexcept override { return "Lägg till Fönster"; }
     void Update(const Camera& camera, Project& project) override;
     void Draw_overlay_3D() const override;
-    void Draw_swatch(Rectangle rect) const noexcept override;
+    void Draw_swatch(Rectangle rect) const noexcept  override;
 };
 
 class Remove : public Tool
@@ -211,6 +211,7 @@ public:
     void Build_handles(Project* project);
     void Drag_handles();
     void Draw_overlay_2D() const override;
+    void Draw_overlay_3D() const override;
     void Draw_swatch(Rectangle rect) const noexcept override;
 
 };

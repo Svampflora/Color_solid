@@ -163,7 +163,7 @@ Remove::Aperture_hit Remove::Hovered_aperture(Wall& wall, Vector2 local_position
 
     for (size_t i = 0; i < wall.windows.size(); ++i)
     {
-        Aperture& d = wall.windows[i];
+        Aperture& d = wall.windows.at(i);
 
         const Rectangle rec
         {
@@ -237,8 +237,8 @@ void Remove::Draw_overlay_3D() const
     DrawQuadLinesEx3D(quad, RED);
 
     // Draw X
-    DrawLine3D(quad[0], quad[2], RED);
-    DrawLine3D(quad[1], quad[3], RED);
+    DrawLine3D(quad.at(0), quad.at(2), RED);
+    DrawLine3D(quad.at(1), quad.at(3), RED);
 }
 
 void Remove::Draw_swatch(Rectangle rect) const noexcept
@@ -479,38 +479,23 @@ void Skirting_resize::Drag_handles()
     }
 }
 
-//void Skirting_resize::Drag_handles()
-//{
-//    const Ray mouse_ray =
-//        GetMouseRay(
-//            GetMousePosition(),
-//            context.camera);
-//
-//    for (Handle* s : selected)
-//    {
-//        const RayCollision collision =
-//            RayIntersectsWall(
-//                mouse_ray,
-//                *s->owner);
-//
-//        if (!collision.hit)
-//            continue;
-//
-//        const Vector3 delta =
-//            Vector3Subtract(
-//                collision.point,
-//                s->last_hit);
-//
-//        s->on_drag(delta);
-//
-//        s->last_hit = collision.point;
-//    }
-//}
-
 void Skirting_resize::Draw_overlay_2D() const
 {
 
     Draw_handles(context.camera);
+}
+
+void Skirting_resize::Draw_overlay_3D() const
+{
+    for (const auto& w : context.project->room.walls)
+    {
+        std::array<Vector3, 4> c = w.Skirting_quad();
+        const Vector3 v1_bottom = c.at(0);
+        const Vector3 v1_top = c.at(3);
+
+        w.Draw_distance(v1_bottom, v1_top, WHITE, TextAnchor3D::MiddleLeft);
+
+    }
 }
 
 void Skirting_resize::Draw_swatch(Rectangle rect) const noexcept

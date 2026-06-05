@@ -364,6 +364,7 @@ void Mirror_resize::Build_handles(Project* project)
 
         _handle.Position = [w]() { return w.Center(); };
         _handle.Normal = [w]() { return w.Normal(); };
+        _handle.Up = [w]() { return w.Up(); };
         _handle.on_drag = [project, w](auto d) { project->room.Mirror_resize(w.Normal(), d); };
         _handle.last_hit = _handle.Position();
 
@@ -454,12 +455,9 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
         if (!hovered)
             return;
 
-        const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
-        const RayHit collision = RayIntersectPlane(mouse_ray, hovered->Normal(), Vector3Distance(context.camera.position, hovered->Position()));
-
         for (auto* s : selected)
         {
-            s->last_hit = collision.point;
+            s->last_hit = s->Position();
         }
     }
 
@@ -475,7 +473,6 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
             else
             {
                 Toggle_selection(hovered);
-
             }
         }
         else
@@ -548,7 +545,6 @@ void Skirting_resize::Draw_overlay_2D() const
         const Vector3 v1_top = c.at(3);
 
         DrawDistance2D(v1_bottom, v1_top, context.camera, WHITE, 26.0f, TextAnchor3D::MiddleRight); //TODO move fontsize to Settings
-
     }
     Draw_handles(context.camera);
 }

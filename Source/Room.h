@@ -25,6 +25,7 @@ struct Handle
 
     std::function<Vector3()> Position;
     std::function<Vector3()> Normal;
+    std::function<Vector3()> Up;
     std::function<void(const Vector3& delta)> on_drag;
 
     bool Active() const noexcept

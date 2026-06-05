@@ -198,6 +198,7 @@ public:
 class Skirting_resize : public Handled_Tool
 {
     Tool_context    context;
+    Handle*         dragged;
 
 public:
     Skirting_resize (Tool_context tool_context) :
@@ -211,7 +212,6 @@ public:
     void Build_handles(Project* project);
     void Drag_handles();
     void Draw_overlay_2D() const override;
-    void Draw_overlay_3D() const override;
     void Draw_swatch(Rectangle rect) const noexcept override;
 
 };

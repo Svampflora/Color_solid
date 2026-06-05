@@ -373,6 +373,39 @@ void Mirror_resize::Build_handles(Project* project)
 
 void Mirror_resize::Draw_overlay_2D() const
 {
+    std::array<size_t, 2> closest_walls{};
+    float closest_distance = Vector3Distance(context.camera.position, context.project->room.Center());
+    float second_closest = closest_distance;
+
+    for (size_t i = 0; i < context.project->room.walls.size(); i++)
+    {
+        if (i == context.project->room.cieling_index || i == context.project->room.floor_index)
+            continue;
+
+        const float distance_to_wall = Vector3Distance(context.camera.position, context.project->room.walls.at(i).Center());
+        if (distance_to_wall < closest_distance)
+        {
+            closest_distance = distance_to_wall;
+            closest_walls.at(0) = i;
+
+        }
+        else if (distance_to_wall < second_closest)
+        {
+            second_closest = distance_to_wall;
+            closest_walls.at(1) = i;
+
+        }
+    }
+
+    for (const size_t i : closest_walls)
+    {
+        if (i == context.project->room.cieling_index || i == context.project->room.floor_index)
+            continue;
+
+        DrawDistance2D(context.project->room.walls.at(i).Vertex(0), context.project->room.walls.at(i).Vertex(1), context.camera, WHITE, 26.0f, TextAnchor3D::BottomCenter);
+        DrawDistance2D(context.project->room.walls.at(i).Vertex(0), context.project->room.walls.at(i).Vertex(3), context.camera, WHITE, 26.0f, TextAnchor3D::MiddleRight);
+    }
+
     Draw_handles(context.camera);
 }
 
@@ -389,28 +422,7 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
 
     Check_hovered(context.camera);
 
-    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-    {
-        Drag_handles();
-    }
-
-    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
-    {
-
-        const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
-        const Wall* wall = context.project->room.Hovered_wall(context.camera, mouse_ray);
-        if (!wall)
-            return;
-
-        const RayCollision collision = RayIntersectsWall(mouse_ray, *wall);
-
-        for (auto* s : selected)
-        {
-            s->last_hit = collision.point;
-        }
-    }
-
-    if (IsMouseButtonReleased(MOUSE_RIGHT_BUTTON))
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
     {
         if (hovered)
         {
@@ -418,11 +430,47 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
             {
                 Select_all();
             }
-            else if(selected.size() == handles.size())
+            else
+            {
+                Select(hovered);
+            }
+
+            dragged = hovered;
+        }
+        else
+        {
+            dragged = nullptr;
+
+        }
+    }
+
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+    {
+        Drag_handles();
+    }
+
+    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+    {
+        if (!hovered)
+            return;
+
+        const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
+        const RayHit collision = RayIntersectPlane(mouse_ray, hovered->Normal(), Vector3Distance(context.camera.position, hovered->Position()));
+
+        for (auto* s : selected)
+        {
+            s->last_hit = collision.point;
+        }
+    }
+
+    if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON))
+    {
+        if (hovered)
+        {
+            if(selected.size() == handles.size())
             {
                 Clear_selection();
                 Toggle_selection(hovered);
-
             }
             else
             {
@@ -453,7 +501,8 @@ void Skirting_resize::Build_handles(Project* project)
              _handle.owner = wall;
              _handle.Position = [ wall]() { return wall->Closest_skirting_position(wall->Center()); };
              _handle.Normal = [wall]() { return wall->Normal(); };
-             _handle.on_drag = [project, wall](Vector3 d) { wall->Alter_skirting(d.y) ; };
+             _handle.Up = [wall]() { return wall->Up(); };
+             _handle.on_drag = [project, wall](Vector3 d) { wall->Alter_skirting(d.x) ; };
              _handle.last_hit = _handle.Position();
 
              handles.push_back(_handle);
@@ -464,39 +513,46 @@ void Skirting_resize::Build_handles(Project* project)
 
 void Skirting_resize::Drag_handles()
 {
-    const Ray mouse_ray = GetMouseRay(GetMousePosition(), context.camera);
-    const Wall* wall = context.project->room.Hovered_wall(context.camera, mouse_ray);
-    if (!wall)
+    if (!dragged)
         return;
 
-    const RayCollision collision = RayIntersectsWall(mouse_ray, *wall);
+    const Ray ray = GetMouseRay(GetMousePosition(),  context.camera);
 
-    for (const auto* s : selected)
+    const Vector3 drag_plane_point = dragged->Position();
+    const Vector3 drag_plane_normal = dragged->Normal();
+    const Vector3 hit = RayIntersectPlane( ray, drag_plane_normal, Vector3Distance(context.camera.position, drag_plane_point)).point;
+
+    const Vector3 delta = Vector3Subtract( hit, dragged->last_hit);
+    const float height_delta = Vector3DotProduct( delta, dragged->Up());
+
+    if (Vector3LengthSqr(delta) <= 0.000001f)
+        return;
+
+    for (const Handle* h : selected)
     {
-        const Vector3 delta = Vector3Subtract( collision.point, s->last_hit);
-
-        s->on_drag(delta);
+        h->on_drag({ height_delta, 0.0f, 0.0f });
     }
+
+    dragged->last_hit = hit;
 }
 
 void Skirting_resize::Draw_overlay_2D() const
 {
-
-    Draw_handles(context.camera);
-}
-
-void Skirting_resize::Draw_overlay_3D() const
-{
-    for (const auto& w : context.project->room.walls)
+    for (size_t i = 0 ; i < context.project->room.walls.size(); i++)
     {
-        std::array<Vector3, 4> c = w.Skirting_quad();
+        if (i == context.project->room.cieling_index || i == context.project->room.floor_index)
+            continue;
+
+        std::array<Vector3, 4> c = context.project->room.walls.at(i).Skirting_quad();
         const Vector3 v1_bottom = c.at(0);
         const Vector3 v1_top = c.at(3);
 
-        w.Draw_distance(v1_bottom, v1_top, WHITE, TextAnchor3D::MiddleLeft);
+        DrawDistance2D(v1_bottom, v1_top, context.camera, WHITE, 26.0f, TextAnchor3D::MiddleRight); //TODO move fontsize to Settings
 
     }
+    Draw_handles(context.camera);
 }
+
 
 void Skirting_resize::Draw_swatch(Rectangle rect) const noexcept
 {

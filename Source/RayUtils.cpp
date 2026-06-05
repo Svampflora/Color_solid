@@ -130,6 +130,30 @@ std::array<Vector3, 4> Quad_strip(const std::array<Vector3, 4>& quad, float norm
              top_right_pos };
 }
 
+void DrawDistance2D(const Vector3& a, const Vector3& b, const Camera camera, const Color& color, float fontSize, TextAnchor3D anchor)
+{
+
+    //DrawLine3D(a, b, color);
+
+
+    const Vector3 mid_point = Vector3Scale(Vector3Add(a, b), 0.5f);
+    const float distance = Vector3Distance(a, b);
+    const Font font = GetFontDefault();
+    const Vector2 offset = GetAnchoredTextOffset2D(font, TextFormat(" %.2f M ", distance), fontSize, anchor);
+    const Vector2 text_position = Vector2Add(GetWorldToScreen(mid_point, camera), offset);
+
+
+    DrawTextEx
+    (
+        GetFontDefault(),
+        TextFormat(" %.2f M ", distance),
+        text_position,
+        fontSize,
+        1.0f,
+        color
+    );
+}
+
 void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint)
 {
     // Character index position in sprite font
@@ -240,6 +264,59 @@ void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, f
 
         i += codepointByteCount;   // Move text bytes counter to next codepoint
     }
+}
+
+Vector2 GetAnchoredTextOffset2D(Font font, const char* text, float fontSize, TextAnchor3D anchor)
+{
+    const int length = TextLength(text);
+    const float scale = fontSize / static_cast<float>(font.baseSize);
+    float textWidth = 0.0f;
+
+    for (int i = 0; i < length;)
+    {
+        int codepointByteCount = 0;
+        const int codepoint = GetCodepoint(&text[i], &codepointByteCount);
+        const int index = GetGlyphIndex(font, codepoint);
+        textWidth += (font.glyphs[index].advanceX > 0 ? font.glyphs[index].advanceX : font.recs[index].width) * scale;
+        i += codepointByteCount;
+    }
+
+    const float textHeight = fontSize;
+
+    Vector2 offset = { 0 };
+
+    switch (anchor)
+    {
+    case TextAnchor3D::Center:
+        offset = { -textWidth * 0.5f, -textHeight * 0.5f };
+        break;
+    case TextAnchor3D::TopLeft:
+        offset = { -textWidth, -textWidth };
+        break;
+    case TextAnchor3D::TopRight:
+        offset = { 0 ,-textWidth };
+        break;
+    case TextAnchor3D::BottomLeft:
+        offset = { -textHeight, 0 };
+        break;
+    case TextAnchor3D::BottomRight:
+        offset = { 0, 0 };
+        break;
+    case TextAnchor3D::TopCenter:
+        offset = { -textWidth * 0.5f, -textWidth };
+        break;
+    case TextAnchor3D::BottomCenter:
+        offset = { -textWidth * 0.5f, 0};
+        break;
+    case TextAnchor3D::MiddleLeft:
+        offset = { -textHeight, -textHeight * 0.5f };
+        break;
+    case TextAnchor3D::MiddleRight:
+        offset = { 0, -textHeight * 0.5f };
+        break;
+    }
+
+    return offset;
 }
 
 Vector3 GetAnchoredTextOffset3D(Font font, const char* text, float fontSize, TextAnchor3D anchor)

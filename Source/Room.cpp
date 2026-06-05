@@ -347,13 +347,6 @@ Wall::Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corne
     room_vertices(corners_ptr)
 {}
 
-//Wall::Handle::Handle() :
-//    hovered{ false },
-//    selected{ false },
-//    wall{ nullptr },
-//    last_hit{ 0.0f, 0.0f, 0.0f }
-//{}
-
 std::vector<Vector3> Wall::Vertices() const
 {
     if (!room_vertices || room_vertices->size() < 3)
@@ -739,10 +732,11 @@ bool Wall::Facing_camera(const Vector3 camera_position) const
 
 void Wall::Alter_skirting(float height)
 {
-    if (Height() < height)
+    const float new_height = skirt_board.height + height;
+    if (Height() < new_height)
         return;
 
-    skirt_board.Set_height(height);
+    skirt_board.Set_height(new_height);
 }
 
 void Wall::Remove_door(size_t i) noexcept
@@ -902,8 +896,6 @@ void Wall::Draw() const
 
     Draw_outline(WHITE);
     Draw_area(TextAnchor3D::Center);
-    Draw_distance(Vertex(0), Vertex(1), text_color, TextAnchor3D::TopCenter);
-    Draw_distance(Vertex(0), Vertex(3), text_color, TextAnchor3D::MiddleLeft);
 
     if (skirt_board.Is_painted())
     {

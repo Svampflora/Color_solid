@@ -3,9 +3,9 @@
 #pragma warning(push)
 #pragma warning(disable:ALL_CODE_ANALYSIS_WARNINGS)
 #include "raylib.h"
+#include "RayUtils.h"
 #pragma warning(pop)
 
-#include "RayUtils.h"
 #include <memory>
 #include <vector>
 #include <string>
@@ -52,7 +52,6 @@ public:
 
         for (std::string s : list)
         {
-            
             if (CheckCollisionPointRec(GetMousePosition(), Entry_rectangle(i)))
             {
                 return i;

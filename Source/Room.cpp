@@ -718,7 +718,7 @@ float Wall::Liters_used(const Paint* target) const
             total += (skirt_board.Area(Quad(), doors, Normal()) * coats) / layer->m2_per_liter;
         }
     }
-
+    
 
     return total;
 }

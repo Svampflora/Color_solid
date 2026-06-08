@@ -482,7 +482,6 @@ void Skirting_resize::Update(const Camera& _camera, Project& _project)
     }
 }
 
-
 void Skirting_resize::Build_handles(Project* project)
 {
     handles.clear();

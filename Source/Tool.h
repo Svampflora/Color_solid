@@ -160,6 +160,48 @@ public:
     void Draw_swatch(Rectangle rect) const noexcept override;
 };
 
+class Painting : public Tool
+{
+    //void Paint_surface(const Camera& camera, Project& project)
+    //{
+    //    const Ray ray = GetMouseRay(GetMousePosition(), camera);
+
+    //    Wall* wall =
+    //        project.room.Hovered_wall(camera, ray);
+
+    //    if (!wall)
+    //        return;
+
+    //    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && wall)
+    //    {
+    //        const Ray ray = GetMouseRay(GetMousePosition(), camera);
+
+    //        Paint* selected_paint = project.Selected_paint();
+
+    //        if (selected_paint)
+    //        {
+    //            const RayCollision ray_collision = RayIntersectsQuad(ray, hovered_wall->Skirting_quad());
+
+    //            if (ray_collision.hit)
+    //            {
+    //                hovered_wall->skirt_board.Add_Paint(*selected_paint); //TODO: return surface area and add to selected paint.area
+    //            }
+    //            else
+    //            {
+    //                hovered_wall->Add_paint(*selected_paint);
+
+    //            }
+    //        }
+    //    }
+    //}
+
+public:
+    const char* Name() const noexcept override { return "Måla"; }
+    void Update(const Camera& camera, Project& project) override;
+    void Draw_overlay_3D() const override;
+    void Draw_swatch(Rectangle rect) const noexcept override;
+};
+
 struct Tool_context
 {
     Camera      camera;

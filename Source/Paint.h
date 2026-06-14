@@ -22,7 +22,7 @@ struct Paint
 
     void Draw_swatch(Rectangle rect) const noexcept;
     void Draw_swatch_with_coats(Rectangle rect) const noexcept;
-    void Draw_info(Rectangle rect, float liters_of) const noexcept;
+    void Draw_info(Rectangle rect, float liters_of, const Font& font) const noexcept;
 
 };
 
@@ -45,16 +45,6 @@ struct Paint_Icon : Menu_Icon
     object(o)
     {}
 
-    void Draw(Rectangle rect, bool selected, bool hovered) const override
-    {
-        paint->Draw_swatch(rect);
+    void Draw(Rectangle rect, bool selected, bool hovered, Font& font) const override;
 
-        if (hovered)
-            DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
-
-        if (selected)
-            DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, GRAY);
-
-        paint->Draw_info(rect, object.Liters_used(paint));
-    }
 };

@@ -10,10 +10,12 @@
 #include <vector>
 #include <string>
 
+#include "Settings.h" //todo: move to .cpp
+
 struct Menu_Icon
 {
     virtual ~Menu_Icon() = default;
-    virtual void Draw(Rectangle rect, bool selected, bool hovered) const = 0;
+    virtual void Draw(Rectangle rect, bool selected, bool hovered, Font& font) const = 0;
 };
 
 class Menu
@@ -25,7 +27,7 @@ public:
     }
     
     void Update(Vector2 position) noexcept;
-    void Draw(Vector2 position) const;
+    void Draw(Vector2 position, Font& font) const;
     int  Selected_index() const noexcept { return selected; }
     void Deselect() noexcept
     {
@@ -61,12 +63,12 @@ public:
         return -1;
     }
 
-    void Draw(const Color& color)
+    void Draw(const Color& color, const Font& font)
     {
         int i = 0;
         for (std::string s : list)
         {
-            Draw_line(color, i);
+            Draw_line(color, i, font);
             i++;
         }
     }
@@ -82,12 +84,11 @@ public:
         }
     }
 
-    void Draw_line(const Color& color, const size_t index)
+    void Draw_line(const Color& color, const size_t index, const Font& font)
     {
         const float line_y = rectangle.y + line_height() * index;
 
-        DrawTextEx(Font(), list.at(index).data(), {rectangle.x , line_y}, line_height(), 2, color);
-
+        DrawTextEx(font, list.at(index).data(), {rectangle.x , line_y}, line_height(), FONT_SPACING, color);
     }
 
     Rectangle Entry_rectangle(const size_t index) 

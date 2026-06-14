@@ -12,13 +12,14 @@ Paint::Paint(Color _color) noexcept :
     m2_per_liter(10.0f)
 {}
 
-void Paint::Draw_info(Rectangle rect, float liters_of) const noexcept
+void Paint::Draw_info(Rectangle rect, float liters_of, const Font& font) const noexcept
 {
+    float spacing = 1.0f;
     const int font_size = 25;
     const float vertical_offset = font_size + 5.0f;
-    std::string name_and_liters = name + ": " + TextFormat("%.1f L", liters_of);
-    DrawTextF(name_and_liters.data(), rect.x + (1.5f * rect.width), rect.y, font_size, RAYWHITE);
-    DrawTextF(TextFormat("%.1f M2 per liter", m2_per_liter), rect.x + (1.5f * rect.width), rect.y + vertical_offset, font_size, RAYWHITE);
+    std::string name_and_liters = name + ": " + TextFormat("%.1fL", liters_of);
+    DrawTextEx(font, name_and_liters.data(), { rect.x + (1.5f * rect.width), rect.y }, font_size,spacing, RAYWHITE);
+    DrawTextEx(font, TextFormat("%.1f M2/L", m2_per_liter), { rect.x + (1.5f * rect.width), rect.y + vertical_offset }, font_size,spacing, RAYWHITE);
 }
 
 void Paint::Draw_swatch(Rectangle rect) const noexcept
@@ -42,4 +43,17 @@ void Paint::Draw_swatch_with_coats(Rectangle rect) const noexcept
         DrawRectangleRounded(layer, 0.5f, 10, fade);
     }
     
+}
+
+void Paint_Icon::Draw(Rectangle rect, bool selected, bool hovered, Font& font) const
+{
+    paint->Draw_swatch(rect);
+
+    if (hovered)
+        DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
+
+    if (selected)
+        DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, GRAY);
+
+    paint->Draw_info(rect, object.Liters_used(paint), font);
 }

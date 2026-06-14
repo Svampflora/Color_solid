@@ -6,7 +6,7 @@
 #include "raylib.h"
 #pragma warning(pop)
 
-
+#include "settings.h" // move to .cpp
 #include "Tool.h"
 
 
@@ -75,15 +75,16 @@ struct Tool_Icon : Menu_Icon
     Tool_Icon(Editor* e, size_t i) noexcept
         : editor(e), tool_index(i) {}
 
-    void Draw(Rectangle rect, bool selected, bool hovered) const override
+    void Draw(Rectangle rect, bool selected, bool hovered, Font& font) const override
     {
-        editor->Get_tool(tool_index).Draw_swatch(rect);
+        editor->Get_tool(tool_index).Draw_swatch(rect, font);
 
         if (hovered)
             DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
 
         if (selected)
             DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, GRAY);
+
     }
 
     //void On_click() override

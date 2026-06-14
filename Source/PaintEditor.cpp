@@ -66,7 +66,7 @@ std::unique_ptr<State> PaintEditor::Update()
 		selected_paint = &project.paints.at(i);
 	}
 
-	const Rectangle selected_paint_rec{ 0.1f * GetScreenWidthF(), 0.1f * GetScreenHeightF(), 0.2f * GetScreenHeightF(), 0.2f * GetScreenHeightF() };
+	const Rectangle selected_paint_rec{ 0.01f * GetScreenWidthF(), 0.01f * GetScreenHeightF(), 0.2f * GetScreenHeightF(), 0.2f * GetScreenHeightF() };		//TODO: move to settings
 	const Rectangle selected_stats_rec{ selected_paint_rec.x, selected_paint_rec.y + selected_paint_rec.height, selected_paint_rec.width, selected_paint_rec.height };
 	if (selected_paint)
 	{
@@ -74,13 +74,13 @@ std::unique_ptr<State> PaintEditor::Update()
 		const int hovered_list_element = text_menu.hovered_index();
 
 		selected_paint->Draw_swatch_with_coats(selected_paint_rec); // todo: move to render
-		text_menu.Draw(LIGHTGRAY);
+		text_menu.Draw(LIGHTGRAY, font);
 
 		if (hovered_list_element >= 0)
 		{
 			
 			const float wheel = GetMouseWheelMove();
-			text_menu.Draw_line(WHITE, hovered_list_element);
+			text_menu.Draw_line(WHITE, hovered_list_element, font);
 			if (wheel != 0)
 			{
 				if (hovered_list_element == 0)
@@ -142,7 +142,7 @@ void PaintEditor::Render() const
 	color_picker.Draw();
 	camera_controller.End_3D();
 
-	paint_menu.Draw({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }); //TODO: repeated magic menu-position
+	paint_menu.Draw({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }, font); //TODO: repeated magic menu-position
 	
 
 }

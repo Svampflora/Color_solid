@@ -19,7 +19,7 @@ public:
 
     virtual void Draw_overlay_3D() const {}
     virtual void Draw_overlay_2D() const {}
-    virtual void Draw_swatch(Rectangle rect) const noexcept = 0;
+    virtual void Draw_swatch(Rectangle rect, Font& font) const noexcept = 0;
 };
 
 class Handled_Tool : public Tool
@@ -107,7 +107,7 @@ public:
     const char* Name() const noexcept override { return "Lägg till Dörr"; }
     void Update(const Camera& camera, Project& project) override;
     void Draw_overlay_3D() const override;
-    void Draw_swatch(Rectangle rect) const noexcept override;
+    void Draw_swatch(Rectangle rect, Font& font) const noexcept override;
 };
 
 class Add_Aperture : public Tool
@@ -121,7 +121,7 @@ public:
     const char* Name() const noexcept override { return "Lägg till Fönster"; }
     void Update(const Camera& camera, Project& project) override;
     void Draw_overlay_3D() const override;
-    void Draw_swatch(Rectangle rect) const noexcept  override;
+    void Draw_swatch(Rectangle rect, Font& font) const noexcept  override;
 };
 
 class Remove : public Tool
@@ -157,7 +157,7 @@ public:
     const char* Name() const noexcept override { return "Ta bort"; }
     void Update(const Camera& camera, Project& project) override;
     void Draw_overlay_3D() const override;
-    void Draw_swatch(Rectangle rect) const noexcept override;
+    void Draw_swatch(Rectangle rect, Font& font) const noexcept override;
 };
 
 class Painting : public Tool
@@ -199,7 +199,7 @@ public:
     const char* Name() const noexcept override { return "Måla"; }
     void Update(const Camera& camera, Project& project) override;
     void Draw_overlay_3D() const override;
-    void Draw_swatch(Rectangle rect) const noexcept override;
+    void Draw_swatch(Rectangle rect, Font& font) const noexcept override;
 };
 
 struct Tool_context
@@ -234,7 +234,7 @@ public:
     void Update(const Camera& _camera, Project& _project) override;
     void Build_handles(Project* project);
     void Draw_overlay_2D() const override;
-    void Draw_swatch(Rectangle rect) const noexcept override;
+    void Draw_swatch(Rectangle rect, Font& font) const noexcept override;
 };
 
 class Skirting_resize : public Handled_Tool
@@ -254,6 +254,6 @@ public:
     void Build_handles(Project* project);
     void Drag_handles();
     void Draw_overlay_2D() const override;
-    void Draw_swatch(Rectangle rect) const noexcept override;
+    void Draw_swatch(Rectangle rect, Font& font) const noexcept override;
 
 };

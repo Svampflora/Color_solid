@@ -66,10 +66,10 @@ void Add_Door::Draw_overlay_3D() const
 }
 
 
-void Add_Door::Draw_swatch(Rectangle rect) const noexcept
+void Add_Door::Draw_swatch(Rectangle rect, Font& font) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+    DrawTextEx(font, Name(), { rect.x, rect.y }, rect.height, FONT_SPACING, WHITE);
 }
 
 
@@ -128,10 +128,10 @@ void Add_Aperture::Draw_overlay_3D() const
     aperture.Draw(hovered_wall->Quad(), hovered_wall->Normal(), DARKGRAY);
 }
 
-void Add_Aperture::Draw_swatch(Rectangle rect) const noexcept
+void Add_Aperture::Draw_swatch(Rectangle rect, Font& font) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+    DrawTextEx(font, Name(), { rect.x, rect.y }, rect.height, FONT_SPACING, WHITE);
 }
 
 Remove::Aperture_hit Remove::Hovered_aperture(Wall& wall, Vector2 local_position)
@@ -241,10 +241,10 @@ void Remove::Draw_overlay_3D() const
     DrawLine3D(quad.at(1), quad.at(3), RED);
 }
 
-void Remove::Draw_swatch(Rectangle rect) const noexcept
+void Remove::Draw_swatch(Rectangle rect, Font& font) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+    DrawTextEx(font, Name(), { rect.x, rect.y }, rect.height, FONT_SPACING, WHITE);
 }
 
 void Handled_Tool::Check_hovered(const Camera& camera)
@@ -410,10 +410,10 @@ void Mirror_resize::Draw_overlay_2D() const
     Draw_handles(context.camera);
 }
 
-void Mirror_resize::Draw_swatch(Rectangle rect) const noexcept
+void Mirror_resize::Draw_swatch(Rectangle rect, Font& font) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+    DrawTextEx(font, Name(), { rect.x, rect.y }, rect.height, FONT_SPACING, WHITE);
 }
 
 void Skirting_resize::Update(const Camera& _camera, Project& _project)
@@ -549,10 +549,10 @@ void Skirting_resize::Draw_overlay_2D() const
 }
 
 
-void Skirting_resize::Draw_swatch(Rectangle rect) const noexcept
+void Skirting_resize::Draw_swatch(Rectangle rect, Font& font) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
-    DrawTextF(Name(), rect.x, rect.y, narrow_cast<int>(rect.height), WHITE);
+    DrawTextEx(font, Name(), { rect.x, rect.y }, rect.height, FONT_SPACING, WHITE);
 }
 
 

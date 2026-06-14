@@ -13,7 +13,7 @@
 #include "Settings.h"
 
 const Vector2 PAINT_MENU_POSITION = { 0.8f * SCREEN_WIDTH, 0.2f * SCREEN_HEIGHT }; //TODO: Settings
-const Vector2 TOOL_MENU_POSITION = { 0.1f * SCREEN_WIDTH, 0.2f * SCREEN_HEIGHT };
+const Vector2 TOOL_MENU_POSITION = { 0.01f * SCREEN_WIDTH, 0.02f * SCREEN_HEIGHT };
 
 Editor::Editor(Project& project_ref, CameraController& camRef, Font& _font) :
     project(project_ref),
@@ -195,8 +195,8 @@ std::unique_ptr<State> Editor::Update()
 
 void Editor::Draw_UI() const
 {
-    paint_menu.Draw(PAINT_MENU_POSITION); 
-    tool_menu.Draw(TOOL_MENU_POSITION);
+    paint_menu.Draw(PAINT_MENU_POSITION, font); 
+    tool_menu.Draw(TOOL_MENU_POSITION, font);
 
     if (tool_menu.Selected_index() != -1)
     {

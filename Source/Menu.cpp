@@ -24,7 +24,7 @@ void Menu::Update(Vector2 position) noexcept
     }   
 }
 
-void Menu::Draw(Vector2 position) const
+void Menu::Draw(Vector2 position, Font& font) const
 {
     const Vector2 mouse = GetMousePosition();
 
@@ -33,7 +33,7 @@ void Menu::Draw(Vector2 position) const
         const Rectangle item_rect = Icon(position, i);
         const bool hovered = CheckCollisionPointRec(mouse, item_rect);
 
-        items.at(i)->Draw(item_rect, selected == i, hovered);
+        items.at(i)->Draw(item_rect, selected == i, hovered, font);
 
     }
 }

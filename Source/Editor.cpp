@@ -15,7 +15,7 @@
 const Vector2 PAINT_MENU_POSITION = { 0.8f * SCREEN_WIDTH, 0.2f * SCREEN_HEIGHT }; //TODO: Settings
 const Vector2 TOOL_MENU_POSITION = { 0.1f * SCREEN_WIDTH, 0.2f * SCREEN_HEIGHT };
 
-Editor::Editor(Project& project_ref, CameraController& camRef) :
+Editor::Editor(Project& project_ref, CameraController& camRef, Font& _font) :
     project(project_ref),
     camera_controller(camRef),
     paint_menu(),
@@ -23,7 +23,7 @@ Editor::Editor(Project& project_ref, CameraController& camRef) :
     tools(),
     active_tool_index{-1},
     tool_menu(),
-    font()
+    font(_font)
 {
     camera_controller.Set_birds_eye();
     camera_controller.Set_projection(CAMERA_PERSPECTIVE);
@@ -36,7 +36,6 @@ Editor::Editor(Project& project_ref, CameraController& camRef) :
     Build_paint_menu();
     Build_tool_menu();
 
-    font = LoadFont("Assets/vcr-osd-mono.ttf");
 }
 
 void Editor::Build_paint_menu()
@@ -60,8 +59,6 @@ void Editor::Make_tools()
     Add_tool(std::make_unique<Remove>());
     Add_tool(std::make_unique<Mirror_resize>(tool_context));
     Add_tool(std::make_unique<Skirting_resize>(tool_context));
-
-
 }
 
 void Editor::Build_tool_menu()
@@ -163,12 +160,12 @@ std::unique_ptr<State> Editor::Update()
 {
     if (IsKeyReleased(KEY_TAB))
     {
-        return std::make_unique<FloorPlanEditor>(project, camera_controller);
+        return std::make_unique<FloorPlanEditor>(project, camera_controller, font);
     }
 
     if (IsKeyReleased(KEY_P))
     {
-        return std::make_unique<PaintEditor>(project, camera_controller);
+        return std::make_unique<PaintEditor>(project, camera_controller, font);
     }
 
 
@@ -238,7 +235,7 @@ void Editor::Render() const
 {
     camera_controller.Begin_3D();
 
-    project.room.Draw_walls();
+    project.room.Draw_walls(font);
     
     const Wall* hovered_wall = Get_Hovered_wall(camera_controller.camera, project.room.walls);
     const Paint* selected_paint = Selected_paint();

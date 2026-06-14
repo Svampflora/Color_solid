@@ -154,19 +154,17 @@ struct Wall : Paintable
     void Remove_window(size_t) noexcept;
     void Add_paint(Paint& paint);
     void Try_add_aperture() noexcept;
-    void Draw_area(const TextAnchor3D anchor) const;
+    void Draw_area(const TextAnchor3D anchor, const Font font) const;
     void Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const;
     void Draw_outline(const Color color) const;
     void Draw_doors_outline(const Color color) const;
     void Draw_apertures_outline(const Color& color) const;
     void Draw_filled() const;
     void Draw_filled(const Color& default_color) const;
-    void Draw() const;
+    void Draw(const Font& font) const;
 };
 
 RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall);
-
-//RayCollision RayIntersectsSkirting(const Ray& ray, const Wall& wall);
 
 struct Room : Paintable
 {
@@ -184,8 +182,8 @@ struct Room : Paintable
     float Selected_wall_area() const;
     float Liters_used(const Paint* target) const override;
     void Generate_box_room(float width, float length, float height);
-    void Mirror_resize(const Vector3& direction, const Vector3& move_delta);
-    void Draw_walls() const;
+    void Mirror_resize(const Vector3& direction, const Vector3& move_delta); //Todo: move to Tool
+    void Draw_walls(const Font& font) const;
 
     Wall* Hovered_wall(const Camera& camera, const Ray& ray)
     {

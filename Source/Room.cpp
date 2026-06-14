@@ -760,7 +760,7 @@ void Wall::Try_add_aperture() noexcept
     windows.push_back(Aperture({0.5f, 0.5f}));
 }
 
-void Wall::Draw_area(const TextAnchor3D anchor) const
+void Wall::Draw_area(const TextAnchor3D anchor, const Font font) const
 {
     const Vector3 forward = Normal();
     const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
@@ -780,7 +780,7 @@ void Wall::Draw_area(const TextAnchor3D anchor) const
 
     DrawAnchoredText3D
     (
-        GetFontDefault(),
+        font,
         TextFormat("%.1f M2", Wall_paint_area()),
         world_pos,
         0.4f, 0.1f,
@@ -885,7 +885,7 @@ void Wall::Draw_filled(const Color& color) const
         }
 }
 
-void Wall::Draw() const
+void Wall::Draw(const Font& font) const
 {
     const Color text_color = WHITE;
 
@@ -895,7 +895,7 @@ void Wall::Draw() const
     }
 
     Draw_outline(WHITE);
-    Draw_area(TextAnchor3D::Center);
+    Draw_area(TextAnchor3D::Center, font);
 
     if (skirt_board.Is_painted())
     {
@@ -1020,7 +1020,7 @@ void Room::Mirror_resize(const Vector3& direction, const Vector3& move_delta) //
     }
 }
 
-void Room::Draw_walls() const
+void Room::Draw_walls(const Font& font) const
 {
     if (walls.size() < 3) return;
 
@@ -1037,7 +1037,7 @@ void Room::Draw_walls() const
             {
                 walls.at(i).Draw_filled();
             }
-            walls.at(i).Draw_area(TextAnchor3D::Center);
+            walls.at(i).Draw_area(TextAnchor3D::Center, font);
         }
         else if (i == cieling_index)
         {
@@ -1052,7 +1052,7 @@ void Room::Draw_walls() const
         }
         else
         {
-            walls.at(i).Draw();
+            walls.at(i).Draw(font);
 
         }
     }

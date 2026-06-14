@@ -12,9 +12,16 @@ class Application
 	Window window{ "Color Solid", SCREEN_WIDTH, SCREEN_HEIGHT };
 	Project project;
 	CameraController camera_controller {project.room.position};
-	std::unique_ptr<State> current_state = std::make_unique<Editor>(project, camera_controller);
+	std::unique_ptr<State> current_state = std::make_unique<Editor>(project, camera_controller, font);
+	Font font = LoadFont("Assets/pixelmix/pixelmix.ttf");
+
 
 public:
+	~Application()
+	{
+		UnloadFont(font);
+	}
+
 	void Update();
 	void Render() const;
 };

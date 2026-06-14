@@ -13,9 +13,10 @@
 
 
 
-FloorPlanEditor::FloorPlanEditor(Project& project_ref, CameraController& camera_ref) :
+FloorPlanEditor::FloorPlanEditor(Project& project_ref, CameraController& camera_ref, Font& _font) :
 	project(project_ref), 
-	camera_controller(camera_ref) 
+	camera_controller(camera_ref),
+	font(_font)
 {
 	camera_controller.Set_top_down();
 	camera_controller.Set_projection(CAMERA_ORTHOGRAPHIC);
@@ -25,7 +26,7 @@ std::unique_ptr<State> FloorPlanEditor::Update()
 {
 	if (IsKeyReleased(KEY_TAB))
 	{
-		return std::make_unique<Editor>(project, camera_controller);
+		return std::make_unique<Editor>(project, camera_controller, font);
 	}
 
 	//camera_controller.Mouse_scroll_zoom();

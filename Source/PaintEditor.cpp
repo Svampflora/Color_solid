@@ -5,11 +5,12 @@
 #include <raymath.h>
 
 
-PaintEditor::PaintEditor(Project& project_ref, CameraController& camera_ref) :
+PaintEditor::PaintEditor(Project& project_ref, CameraController& camera_ref, Font& _font) :
 	color_picker(),
 	paint_menu(),
 	project(project_ref),
-	camera_controller(camera_ref)
+	camera_controller(camera_ref),
+	font(_font)
 {
 	Build_paint_menu();
 
@@ -50,7 +51,7 @@ std::unique_ptr<State> PaintEditor::Update()
 {
 	if (IsKeyReleased(KEY_TAB))
 	{
-		return std::make_unique<Editor>(project, camera_controller);
+		return std::make_unique<Editor>(project, camera_controller, font);
 	}
 	color_picker.Update(camera_controller.camera);
 

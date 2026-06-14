@@ -9,8 +9,15 @@ struct Project
 
 	Project() noexcept
 	{
-		paints.push_back(Paint({ 250, 150, 150, 255 }));
-		paints.push_back(Paint({ 237, 237, 213, 255 }));
-		paints.push_back(Paint({ 66, 95, 150, 255 }));
+		Add_paint({ 250, 150, 150, 255 });
+		Add_paint({ 237, 237, 213, 255 });
+		Add_paint({ 66, 95, 150, 255 });
+	}
+
+	void Add_paint(Color color) noexcept
+	{
+		Paint paint(color);
+		paint.name = "Paint " + std::to_string(paints.size() + 2);
+		paints.push_back(paint);
 	}
 };

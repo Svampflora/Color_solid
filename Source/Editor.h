@@ -21,8 +21,6 @@ struct Feature_settings
 
 };
 
-
-
 class Editor : public State
 {
     Project&                            project;
@@ -32,7 +30,7 @@ class Editor : public State
     std::vector<std::unique_ptr<Tool>>  tools;
     int                                 active_tool_index;
     Menu                                tool_menu;
-    Font                                font;
+    Font& font;
 
     Vector3                             room_position = { 0.0f, 0.0f, 0.0f };
     float                               min_size = 1.0f; //TODO: move. settings?
@@ -40,7 +38,7 @@ class Editor : public State
 
 public:
 
-    Editor(Project& project_ref, CameraController& camera_controller_ref);
+    Editor(Project& project_ref, CameraController& camera_controller_ref, Font& _font);
     std::unique_ptr<State> Update() override;
     void Render() const override;
 
@@ -49,7 +47,6 @@ public:
         return *tools.at(i);
     }
 private:
-    //Handle Make_handle(const Wall* wall);
     Wall* Hovered_wall();
     const Paint* Selected_paint() const;
     Paint* Selected_paint();

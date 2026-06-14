@@ -12,9 +12,10 @@ class PaintEditor : public State
 	Menu paint_menu;
 	Project& project;
 	CameraController& camera_controller;
+	Font& font;
 
 public:
-	PaintEditor(Project& project_ref, CameraController& camera_ref);
+	PaintEditor(Project& project_ref, CameraController& camera_ref, Font& _font);
 	std::unique_ptr<State> Update() override;
 	void Render() const override;
 

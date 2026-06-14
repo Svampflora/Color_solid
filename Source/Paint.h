@@ -13,6 +13,7 @@ inline size_t MAX_COATS = 10;
 
 struct Paint
 {
+    std::string name;
     Color color;
     size_t coats;
     float m2_per_liter;

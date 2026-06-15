@@ -18,7 +18,7 @@ public:
     virtual void On_leave() noexcept {}
 
     virtual void Draw_overlay_3D() const {}
-    virtual void Draw_overlay_2D() const {}
+    virtual void Draw_overlay_2D() const {};
     virtual void Draw_swatch(Rectangle rect, Font& font) const noexcept = 0;
 };
 
@@ -30,76 +30,22 @@ protected:
     std::vector<Handle*>    selected;
     Handle*                 hovered = nullptr;
 
+    bool Is_selected(const Handle* handle) const;
+    virtual void Select(Handle* handle);
     void Check_hovered(const Camera&);
     void Draw_handles(const Camera&) const;
+    void On_leave() noexcept override;
+    void Toggle_selection(Handle* handle);
+    void Clear_selection() noexcept;
+    void Deselect(Handle* handle);
+    void Select_all();
 
-    void On_leave() noexcept override
-    {
-        hovered = nullptr;
-        selected.clear();
-    }
-
-    bool Is_selected(const Handle* handle) const
-    {
-        return std::find(
-            selected.begin(),
-            selected.end(),
-            handle)
-            != selected.end();
-    }
-    virtual void Select(Handle* handle)
-    {
-        if (!handle)
-            return;
-
-        if (!Is_selected(handle))
-        {
-            selected.push_back(handle);
-        }
-    }
-    void Deselect(Handle* handle)
-    {
-        selected.erase(
-            std::remove(
-                selected.begin(),
-                selected.end(),
-                handle),
-            selected.end());
-    }
-
-    void Select_all()
-    {
-        selected.clear();
-        selected.reserve(handles.size());
-        for (auto& h : handles)
-        {
-            selected.emplace_back(std::addressof(h));
-        }
-    }
-    void Toggle_selection(Handle* handle)
-    {
-        if (!handle)
-            return;
-
-        if (Is_selected(handle))
-        {
-            Deselect(handle);
-        }
-        else
-        {
-            Select(handle);
-        }
-    }
-    void Clear_selection() noexcept
-    {
-        selected.clear();
-    }
 };
 
 class Add_Door : public Tool
 {
     Wall* hovered_wall = nullptr;
-    Ray ray;
+    Ray ray = {};
 
     Entrance local_projection(const Wall wall) const;
 
@@ -206,6 +152,7 @@ struct Tool_context
 {
     Camera      camera;
     Project*    project;
+    Font&       font;
     float       dt;
 };
 
@@ -216,25 +163,15 @@ class Mirror_resize : public Handled_Tool
     Handle* Selected();
     void Select(Handle* handle) override;
 public:
-    Mirror_resize(Tool_context tool_context) :
-    context(tool_context)
-    {
-        selected.push_back(nullptr);
-        Build_handles(context.project);
-    }
 
-    void On_leave() noexcept override
-    {
-        hovered = nullptr;
-        selected.at(0) = nullptr;
-    }
-
+    Mirror_resize(Tool_context tool_context);
     const char* Name() const noexcept override { return "Spegel-dra rum"; }
-    void Drag_handles();
-    void Update(const Camera& _camera, Project& _project) override;
+    void On_leave() noexcept override;
     void Build_handles(Project* project);
-    void Draw_overlay_2D() const override;
+    void Update(const Camera& _camera, Project& _project) override;
+    void Drag_handles();
     void Draw_swatch(Rectangle rect, Font& font) const noexcept override;
+    void Draw_overlay_2D() const override;
 };
 
 class Skirting_resize : public Handled_Tool
@@ -243,17 +180,13 @@ class Skirting_resize : public Handled_Tool
     Handle*         dragged;
 
 public:
-    Skirting_resize (Tool_context tool_context) :
-    context(tool_context)
-    {
-        Build_handles(context.project);
-    }
 
+    Skirting_resize(Tool_context tool_context);
     const char* Name() const noexcept override { return "Dra ut golvlist"; }
     void Update(const Camera& _camera, Project& _project) override;
     void Build_handles(Project* project);
     void Drag_handles();
-    void Draw_overlay_2D() const override;
     void Draw_swatch(Rectangle rect, Font& font) const noexcept override;
+    void Draw_overlay_2D() const override;
 
 };

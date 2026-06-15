@@ -55,16 +55,13 @@ std::unique_ptr<State> PaintEditor::Update()
 	}
 	color_picker.Update(camera_controller.camera);
 
-	Paint* selected_paint;
+	Paint* selected_paint{nullptr};
 	const int i = paint_menu.Selected_index();
-	if (i < 0)
-	{
-		selected_paint = nullptr;
-	}
-	else
+	if (i >= 0)
 	{
 		selected_paint = &project.paints.at(i);
 	}
+
 
 	const Rectangle selected_paint_rec{ 0.01f * GetScreenWidthF(), 0.01f * GetScreenHeightF(), 0.2f * GetScreenHeightF(), 0.2f * GetScreenHeightF() };		//TODO: move to settings
 	const Rectangle selected_stats_rec{ selected_paint_rec.x, selected_paint_rec.y + selected_paint_rec.height, selected_paint_rec.width, selected_paint_rec.height };
@@ -143,6 +140,4 @@ void PaintEditor::Render() const
 	camera_controller.End_3D();
 
 	paint_menu.Draw({ 0.8f * GetScreenWidthF(), 0.2f * GetScreenHeightF() }, font); //TODO: repeated magic menu-position
-	
-
 }

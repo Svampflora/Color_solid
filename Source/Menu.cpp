@@ -3,7 +3,12 @@
     constexpr Vector2 ICON_SIZE = { 60.0f, 60.0f }; //move to settings
     constexpr float ICON_PADDING = 20.0f;
 
-void Menu::Update(Vector2 position) noexcept
+    void Menu::Add_item(std::unique_ptr<Menu_Icon> item)
+    {
+        items.push_back(std::move(item));
+    }
+
+    void Menu::Update(Vector2 position) noexcept
 {
     const Vector2 mouse = GetMousePosition();
 
@@ -36,6 +41,11 @@ void Menu::Draw(Vector2 position, Font& font) const
         items.at(i)->Draw(item_rect, selected == i, hovered, font);
 
     }
+}
+
+void Menu::Deselect() noexcept
+{
+    selected = -1;
 }
 
 bool Menu::Clicked(Vector2 position, Vector2 mouse_position) const noexcept

@@ -287,6 +287,72 @@ void Handled_Tool::Draw_handles(const Camera& camera) const
     }
 }
 
+void Handled_Tool::On_leave() noexcept
+{
+    hovered = nullptr;
+    selected.clear();
+}
+
+bool Handled_Tool::Is_selected(const Handle* handle) const
+{
+    return std::find(
+        selected.begin(),
+        selected.end(),
+        handle)
+        != selected.end();
+}
+
+void Handled_Tool::Select(Handle* handle)
+{
+    if (!handle)
+        return;
+
+    if (!Is_selected(handle))
+    {
+        selected.push_back(handle);
+    }
+}
+
+void Handled_Tool::Deselect(Handle* handle)
+{
+    selected.erase(
+        std::remove(
+            selected.begin(),
+            selected.end(),
+            handle),
+        selected.end());
+}
+
+void Handled_Tool::Select_all()
+{
+    selected.clear();
+    selected.reserve(handles.size());
+    for (auto& h : handles)
+    {
+        selected.emplace_back(std::addressof(h));
+    }
+}
+
+void Handled_Tool::Toggle_selection(Handle* handle)
+{
+    if (!handle)
+        return;
+
+    if (Is_selected(handle))
+    {
+        Deselect(handle);
+    }
+    else
+    {
+        Select(handle);
+    }
+}
+
+void Handled_Tool::Clear_selection() noexcept
+{
+    selected.clear();
+}
+
 Handle* Mirror_resize::Selected()
 {
     return selected.at(0);
@@ -295,6 +361,19 @@ Handle* Mirror_resize::Selected()
 void Mirror_resize::Select(Handle* handle)
 {
     selected.at(0) = handle;
+}
+
+Mirror_resize::Mirror_resize(Tool_context tool_context) :
+    context(tool_context)
+{
+    selected.push_back(nullptr);
+    Build_handles(context.project);
+}
+
+void Mirror_resize::On_leave() noexcept
+{
+    hovered = nullptr;
+    selected.at(0) = nullptr;
 }
 
 void Mirror_resize::Drag_handles()
@@ -403,8 +482,8 @@ void Mirror_resize::Draw_overlay_2D() const
         if (i == context.project->room.cieling_index || i == context.project->room.floor_index)
             continue;
 
-        DrawDistance2D(context.project->room.walls.at(i).Vertex(0), context.project->room.walls.at(i).Vertex(1), context.camera, WHITE, 26.0f, TextAnchor3D::BottomCenter);
-        DrawDistance2D(context.project->room.walls.at(i).Vertex(0), context.project->room.walls.at(i).Vertex(3), context.camera, WHITE, 26.0f, TextAnchor3D::MiddleRight);
+        DrawDistance2D(context.project->room.walls.at(i).Vertex(0), context.project->room.walls.at(i).Vertex(1), context.camera, WHITE, 26.0f, TextAnchor3D::BottomCenter, context.font);
+        DrawDistance2D(context.project->room.walls.at(i).Vertex(0), context.project->room.walls.at(i).Vertex(3), context.camera, WHITE, 26.0f, TextAnchor3D::MiddleRight,  context.font);
     }
 
     Draw_handles(context.camera);
@@ -414,6 +493,12 @@ void Mirror_resize::Draw_swatch(Rectangle rect, Font& font) const noexcept
 {
     DrawRectangleRounded(rect, 0.5f, 10, LIGHTGRAY);
     DrawTextEx(font, Name(), { rect.x, rect.y }, rect.height, FONT_SPACING, WHITE);
+}
+
+Skirting_resize::Skirting_resize(Tool_context tool_context) :
+    context(tool_context)
+{
+    Build_handles(context.project);
 }
 
 void Skirting_resize::Update(const Camera& _camera, Project& _project)
@@ -543,7 +628,7 @@ void Skirting_resize::Draw_overlay_2D() const
         const Vector3 v1_bottom = c.at(0);
         const Vector3 v1_top = c.at(3);
 
-        DrawDistance2D(v1_bottom, v1_top, context.camera, WHITE, 26.0f, TextAnchor3D::MiddleRight); //TODO move fontsize to Settings
+        DrawDistance2D(v1_bottom, v1_top, context.camera, WHITE, 26.0f, TextAnchor3D::MiddleRight, context.font); //TODO move fontsize to Settings
     }
     Draw_handles(context.camera);
 }

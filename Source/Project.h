@@ -17,7 +17,7 @@ struct Project
 	void Add_paint(Color color) noexcept
 	{
 		Paint paint(color);
-		paint.name = "Färg " + std::to_string(paints.size() + 2);
+		paint.name = "Färg " + std::to_string(paints.size() + 1);
 		paints.push_back(paint);
 	}
 };

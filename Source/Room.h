@@ -16,23 +16,19 @@ constexpr float HANDLE_RADIUS = 10.0f;      //TODO: move to settings
 struct Handle
 {
     Vector3 last_hit;
-    void* owner = nullptr;
+    void* owner;
 
-    Handle() noexcept
-    {
-        last_hit = { 0.0f,0.0f,0.0f };
-    }
+    Handle() noexcept :
+     last_hit{ 0.0f,0.0f,0.0f },
+     owner{ nullptr }
+    {}
 
     std::function<Vector3()> Position;
     std::function<Vector3()> Normal;
     std::function<Vector3()> Up;
     std::function<void(const Vector3& delta)> on_drag;
 
-    bool Active() const noexcept
-    {
-        return Position && Normal;
-    }
-
+    bool Active() const noexcept;
     bool Hovered(const Camera& camera) const;
 };
 
@@ -43,14 +39,13 @@ struct Object
     float width, height, depth;
     std::vector<Paint*> paint_layers;
 
-    Object() noexcept
-    {
-        center = {0.0f, 0.0f, 0.0f};
-        width = 0.0f;
-        height = 0.0f;
-        depth = 0.0f;
-
-    }
+    Object() noexcept :
+     center {0.0f, 0.0f, 0.0f},
+     width { 0.0f },
+     height{ 0.0f },
+     depth{ 0.0f },
+     paint_layers{}
+    {}
 };
 
 struct Aperture
@@ -58,13 +53,12 @@ struct Aperture
     Vector2 center;
     float width, height, depth;
 
-    Aperture() noexcept
-    {
-        center = { 0.0f, 0.0f };
-        width = 0.0f;
-        height = 0.0f;
-        depth = 0.0f;
-    }
+    Aperture() noexcept :
+        center{ 0.0f, 0.0f },
+        width{ 0.0f },
+        height{ 0.0f },
+        depth{ 0.0f }
+    {}
     
     Aperture(const Vector2& _center) noexcept : center{ _center }, width{ 1.0f }, height{ 1.5f }, depth{ 0.1f }
     {};
@@ -73,15 +67,13 @@ struct Aperture
 
     std::vector<std::array<Vector3, 4>> Carve(const std::array<Vector3, 4>& main_quad, const std::array<Vector3, 4>& aperture_quad) const;
     virtual std::array<Vector3, 4> Quad(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal) const;
-    float Area() const noexcept;
+    virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     virtual float Height() const noexcept;
     virtual float Width() const noexcept;
+    float Area() const noexcept;
 
-    virtual Vector3 Center_position(const std::array<Vector3, 4>& wall_quad) const;
     virtual void Draw(const std::array<Vector3, 4>& wall_quad, const Vector3& wall_normal, const Color& color) const;
-
     void Draw_2D(Vector2 position) const noexcept;
-
 };
 
 struct Entrance : public Aperture
@@ -103,12 +95,11 @@ struct Entrance : public Aperture
 
 struct Skirting
 {
+    std::vector<Paint*> paint_layers{};
     float height = 0.15f;
-    std::vector<Paint*> paint_layers;
-
-    Color Get_color() const;
 
     std::vector< std::array<Vector3, 4>>Quads(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3 wall_normal) const;
+    Color Get_color() const;
     float Area(const std::array<Vector3, 4>& wall_quad, const std::vector<Entrance>& entrances, const Vector3& wall_normal) const ;
     bool Is_painted() const noexcept;
     void Add_Paint(Paint& paint);
@@ -121,14 +112,12 @@ struct Wall : Paintable
 {
     std::vector<Paint*> paint_layers;
     std::vector<size_t> vertex_indices;
-    const std::vector< Vector3>* room_vertices = nullptr;
-    std::vector<Entrance> doors{};
+    const std::vector< Vector3>* room_vertices;
+    std::vector<Entrance> doors;
     std::vector<Aperture> windows;
-
     Skirting skirt_board;
 
     Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept;
-
     std::vector<std::array<Vector3, 4>> Cut_bottom(const std::vector<std::array<Vector3, 4>>& quads, float distance_from_bottom) const;
     std::vector<std::array<Vector3, 4>> Paint_quads() const;
     std::vector<Vector3> Vertices() const;
@@ -155,7 +144,7 @@ struct Wall : Paintable
     void Add_paint(Paint& paint);
     void Try_add_aperture() noexcept;
     void Draw_area(const TextAnchor3D anchor, const Font font) const;
-    void Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const;
+    //void Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor, const Font& font) const;
     void Draw_outline(const Color color) const;
     void Draw_doors_outline(const Color color) const;
     void Draw_apertures_outline(const Color& color) const;
@@ -176,31 +165,12 @@ struct Room : Paintable
     size_t cieling_index;
 
     Room();
-
+    Wall* Hovered_wall(const Camera& camera, const Ray& ray);
     Vector3 Center() const;
     float Total_wall_paint_area() const;
     float Selected_wall_area() const;
     float Liters_used(const Paint* target) const override;
     void Generate_box_room(float width, float length, float height);
-    void Mirror_resize(const Vector3& direction, const Vector3& move_delta); //Todo: move to Tool
+    void Mirror_resize(const Vector3& direction, const Vector3& move_delta); //Todo: move more of logic to Tool
     void Draw_walls(const Font& font) const;
-
-    Wall* Hovered_wall(const Camera& camera, const Ray& ray)
-    {
-        Wall* hovered_wall = nullptr;
-
-        for (auto& wall : walls)
-        {
-
-            if (RayIntersectsWall(ray, wall).hit)
-            {
-                
-                if (wall.Facing_camera(camera.position))
-                {
-                    hovered_wall = &wall;
-                }
-            }
-        }
-        return hovered_wall;
-    }
 };

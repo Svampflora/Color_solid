@@ -25,12 +25,12 @@ class Editor : public State
 {
     Project&                            project;
     CameraController&                   camera_controller;
-    Menu                                paint_menu;
     Feature_settings                    feature_settings;
     std::vector<std::unique_ptr<Tool>>  tools;
-    int                                 active_tool_index;
+    Font&                               font;
+    Menu                                paint_menu;
     Menu                                tool_menu;
-    Font& font;
+    int                                 active_tool_index;
 
     Vector3                             room_position = { 0.0f, 0.0f, 0.0f };
     float                               min_size = 1.0f; //TODO: move. settings?
@@ -40,30 +40,23 @@ public:
 
     Editor(Project& project_ref, CameraController& camera_controller_ref, Font& _font);
     std::unique_ptr<State> Update() override;
+    Tool& Get_tool(size_t i);
     void Render() const override;
 
-    Tool& Get_tool(size_t i)
-    {
-        return *tools.at(i);
-    }
 private:
+
     Wall* Hovered_wall();
     const Paint* Selected_paint() const;
     Paint* Selected_paint();
-
-    void Add_tool(std::unique_ptr<Tool> tool)
-    {
-        tools.push_back(std::move(tool));
-    }
-    void Make_tools();
-    
-    void Edit();
+    void Add_tool(std::unique_ptr<Tool> tool);
+    void Select_paint() noexcept;
+    void Select_tool(int index);
     void Build_paint_menu();
     void Build_tool_menu();
     void Select_handle();
-    void Select_tool(int index);
-    void Select_paint() noexcept;
     void Paint_surface();
+    void Make_tools();
+    void Edit();
     void Draw_UI() const;
 };
 
@@ -72,20 +65,13 @@ struct Tool_Icon : Menu_Icon
     Editor* editor;
     size_t tool_index;
 
-    Tool_Icon(Editor* e, size_t i) noexcept
-        : editor(e), tool_index(i) {}
+    Tool_Icon(Editor* e, size_t i) noexcept :
+        editor(e), 
+        tool_index(i) 
+    {}
 
-    void Draw(Rectangle rect, bool selected, bool hovered, Font& font) const override
-    {
-        editor->Get_tool(tool_index).Draw_swatch(rect, font);
+    void Draw(Rectangle rect, bool selected, bool hovered, Font& font) const override;
 
-        if (hovered)
-            DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
-
-        if (selected)
-            DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, GRAY);
-
-    }
 
     //void On_click() override
     //{

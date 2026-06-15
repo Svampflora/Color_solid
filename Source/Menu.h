@@ -21,19 +21,12 @@ struct Menu_Icon
 class Menu
 {
 public:
-    void Add_item(std::unique_ptr<Menu_Icon> item)
-    {
-        items.push_back(std::move(item));
-    }
-    
+    int  Selected_index() const noexcept { return selected; }
+    bool Clicked(Vector2 position, Vector2 mouse_position) const noexcept;
+    void Add_item(std::unique_ptr<Menu_Icon> item);
     void Update(Vector2 position) noexcept;
     void Draw(Vector2 position, Font& font) const;
-    int  Selected_index() const noexcept { return selected; }
-    void Deselect() noexcept
-    {
-        selected = -1;
-    }
-    bool Clicked(Vector2 position, Vector2 mouse_position) const noexcept;
+    void Deselect() noexcept;
 
 private:
     std::vector<std::unique_ptr<Menu_Icon>> items;

@@ -18,12 +18,12 @@ const Vector2 TOOL_MENU_POSITION = { 0.01f * SCREEN_WIDTH, 0.02f * SCREEN_HEIGHT
 Editor::Editor(Project& project_ref, CameraController& camRef, Font& _font) :
     project(project_ref),
     camera_controller(camRef),
-    paint_menu(),
     feature_settings(),
     tools(),
-    active_tool_index{-1},
+    font(_font),
+    paint_menu(),
     tool_menu(),
-    font(_font)
+    active_tool_index{-1}
 {
     camera_controller.Set_birds_eye();
     camera_controller.Set_projection(CAMERA_PERSPECTIVE);
@@ -52,7 +52,7 @@ void Editor::Build_paint_menu()
 
 void Editor::Make_tools()
 {
-    Tool_context tool_context{ camera_controller.camera, &project, GetFrameTime() };
+    Tool_context tool_context{ camera_controller.camera, &project, font, GetFrameTime() };
 
     Add_tool(std::make_unique<Add_Door>());
     Add_tool(std::make_unique<Add_Aperture>());
@@ -70,6 +70,7 @@ void Editor::Build_tool_menu()
         tool_menu.Add_item(std::make_unique<Tool_Icon>(this, i));
     }
 }
+
 
 void Editor::Select_tool(int index)
 {
@@ -95,6 +96,11 @@ const Paint* Editor::Selected_paint() const
     const int i = paint_menu.Selected_index();
     if (i < 0) return nullptr;
     return &project.paints.at(i);
+}
+
+void Editor::Add_tool(std::unique_ptr<Tool> tool)
+{
+    tools.push_back(std::move(tool));
 }
 
 const Wall* Get_Hovered_wall(const Camera& camera, const std::vector<Wall>& walls)
@@ -134,8 +140,6 @@ Wall* Editor::Hovered_wall()
     }
     return hovered_wall;
 }
-
-
 
 
 void Editor::Edit()
@@ -191,6 +195,11 @@ std::unique_ptr<State> Editor::Update()
     tool_menu.Update(TOOL_MENU_POSITION);   
 
     return nullptr;
+}
+
+Tool& Editor::Get_tool(size_t i)
+{
+    return *tools.at(i);
 }
 
 void Editor::Draw_UI() const
@@ -269,3 +278,15 @@ void Editor::Render() const
     Draw_UI();
 
 };
+
+void Tool_Icon::Draw(Rectangle rect, bool selected, bool hovered, Font& font) const
+{
+    editor->Get_tool(tool_index).Draw_swatch(rect, font);
+
+    if (hovered)
+        DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, DARKGRAY);
+
+    if (selected)
+        DrawRectangleRoundedLines(rect, 0.5f, 10, 20.0f, GRAY);
+
+}

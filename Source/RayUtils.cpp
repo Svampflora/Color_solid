@@ -130,22 +130,18 @@ std::array<Vector3, 4> Quad_strip(const std::array<Vector3, 4>& quad, float norm
              top_right_pos };
 }
 
-void DrawDistance2D(const Vector3& a, const Vector3& b, const Camera camera, const Color& color, float fontSize, TextAnchor3D anchor)
+void DrawDistance2D(const Vector3& a, const Vector3& b, const Camera camera, const Color& color, float fontSize, TextAnchor3D anchor, const Font& font)
 {
-
     //DrawLine3D(a, b, color);
-
 
     const Vector3 mid_point = Vector3Scale(Vector3Add(a, b), 0.5f);
     const float distance = Vector3Distance(a, b);
-    const Font font = GetFontDefault();
     const Vector2 offset = GetAnchoredTextOffset2D(font, TextFormat(" %.2f M ", distance), fontSize, anchor);
     const Vector2 text_position = Vector2Add(GetWorldToScreen(mid_point, camera), offset);
 
-
     DrawTextEx
     (
-        GetFontDefault(),
+        font,
         TextFormat(" %.2f M ", distance),
         text_position,
         fontSize,
@@ -154,7 +150,7 @@ void DrawDistance2D(const Vector3& a, const Vector3& b, const Camera camera, con
     );
 }
 
-void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint)
+void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint) noexcept
 {
     // Character index position in sprite font
     // NOTE: In case a codepoint is not available in the font, index returned points to '?'
@@ -266,8 +262,11 @@ void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, f
     }
 }
 
-Vector2 GetAnchoredTextOffset2D(Font font, const char* text, float fontSize, TextAnchor3D anchor)
+Vector2 GetAnchoredTextOffset2D(Font font, const char* text, float fontSize, TextAnchor3D anchor) noexcept
 {
+    if (!text)
+        return{ 0.0f,0.0f };
+
     const int length = TextLength(text);
     const float scale = fontSize / static_cast<float>(font.baseSize);
     float textWidth = 0.0f;
@@ -321,6 +320,9 @@ Vector2 GetAnchoredTextOffset2D(Font font, const char* text, float fontSize, Tex
 
 Vector3 GetAnchoredTextOffset3D(Font font, const char* text, float fontSize, TextAnchor3D anchor)
 {
+    if (!text)
+        return{ 0.0f,0.0f ,0.0f };
+
     const int length = TextLength(text);
     const float scale = fontSize / static_cast<float>(font.baseSize);
     float textWidth = 0.0f;

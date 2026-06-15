@@ -14,6 +14,11 @@
 #include <algorithm>
 
 
+bool Handle::Active() const noexcept
+{
+    return Position && Normal;
+}
+
 bool Handle::Hovered(const Camera& camera) const
 {
     if (!Active())
@@ -343,8 +348,12 @@ void Skirting::Draw_outline(const std::array<Vector3, 4>& wall_quad, const std::
 // === WALL ===
 
 Wall::Wall(const std::vector<size_t>& indices, const std::vector<Vector3>* corners_ptr) noexcept :
+    paint_layers{},
     vertex_indices(indices),
-    room_vertices(corners_ptr)
+    room_vertices(corners_ptr),
+    doors{},
+    windows{},
+    skirt_board{}
 {}
 
 std::vector<Vector3> Wall::Vertices() const
@@ -791,37 +800,37 @@ void Wall::Draw_area(const TextAnchor3D anchor, const Font font) const
     );
 }
 
-void Wall::Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor) const
-{
-    //DrawLine3D(a, b, color);
-    const Vector3 mid_point = Vector3Scale(Vector3Add(a, b), 0.5f);
-    const float distance = Vector3Distance(a, b);
-
-    const Vector3 forward = Vector3Negate(Normal());
-    const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
-    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
-    const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
-
-    const Matrix rotation =
-    {
-        right.x, up.x, forward.x, 0,
-        right.y, up.y, forward.y, 0,
-        right.z, up.z, forward.z, 0,
-        0,       0,    0,         1
-    };
-
-    DrawAnchoredText3D
-    (
-        GetFontDefault(),
-        TextFormat("%.2f M", distance),
-        mid_point,
-        0.2f, 0.1f,
-        false,
-        color,
-        anchor,
-        rotation
-    );
-}
+//void Wall::Draw_distance(const Vector3& a, const Vector3& b, const Color& color, const TextAnchor3D anchor, const Font& font) const
+//{
+//    //DrawLine3D(a, b, color);
+//    const Vector3 mid_point = Vector3Scale(Vector3Add(a, b), 0.5f);
+//    const float distance = Vector3Distance(a, b);
+//
+//    const Vector3 forward = Vector3Negate(Normal());
+//    const Vector3 world_up = { 0.0f, 1.0f, 0.0f };
+//    const Vector3 right = Vector3Normalize(Vector3CrossProduct(world_up, forward));
+//    const Vector3 up = Vector3Normalize(Vector3CrossProduct(forward, right));
+//
+//    const Matrix rotation =
+//    {
+//        right.x, up.x, forward.x, 0,
+//        right.y, up.y, forward.y, 0,
+//        right.z, up.z, forward.z, 0,
+//        0,       0,    0,         1
+//    };
+//
+//    DrawAnchoredText3D
+//    (
+//        font,
+//        TextFormat("%.2f M", distance),
+//        mid_point,
+//        0.2f, 0.1f,
+//        false,
+//        color,
+//        anchor,
+//        rotation
+//    );
+//}
 
 void Wall::Draw_outline(const Color color) const
 {
@@ -938,6 +947,25 @@ RayCollision RayIntersectsWall(const Ray& ray, const Wall& wall) //TODO: find ho
 Room::Room()
 {
     Generate_box_room(4.0f, 5.0f, 2.5f);
+}
+
+Wall* Room::Hovered_wall(const Camera& camera, const Ray& ray)
+{
+    Wall* hovered_wall = nullptr;
+
+    for (auto& wall : walls)
+    {
+
+        if (RayIntersectsWall(ray, wall).hit)
+        {
+
+            if (wall.Facing_camera(camera.position))
+            {
+                hovered_wall = &wall;
+            }
+        }
+    }
+    return hovered_wall;
 }
 
 void Room::Generate_box_room(float width, float length, float height) 

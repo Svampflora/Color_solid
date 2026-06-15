@@ -30,9 +30,9 @@ enum class TextAnchor3D {
 
 // === Text drawing ===
 Vector3 GetAnchoredTextOffset3D(Font font, const char* text, float fontSize, TextAnchor3D anchor);
-Vector2 GetAnchoredTextOffset2D(Font font, const char* text, float fontSize, TextAnchor3D anchor);
-void DrawDistance2D(const Vector3& a, const Vector3& b, const Camera camera, const Color& color, float fontSize, TextAnchor3D anchor);
-void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint);
+Vector2 GetAnchoredTextOffset2D(Font font, const char* text, float fontSize, TextAnchor3D anchor) noexcept;
+void DrawDistance2D(const Vector3& a, const Vector3& b, const Camera camera, const Color& color, float fontSize, TextAnchor3D anchor, const Font& font);
+void DrawTextCodepoint3D(Font font, int codepoint, Vector3 position, float fontSize, bool backface, Color tint) noexcept;
 void DrawText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, float lineSpacing, bool backface, Color tint);
 void DrawAnchoredText3D(Font font, const char* text, Vector3 position, float fontSize, float fontSpacing, bool backface, Color tint, TextAnchor3D anchor, const Matrix& rotation);
 
